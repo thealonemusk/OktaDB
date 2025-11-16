@@ -7,6 +7,7 @@
 
 // Define my_strdup for Windows if not already defined
 
+// Function to print help documentation
 void print_help() {
     printf("OktaDB - A learning database implementation\n");
     printf("Usage:\n");
@@ -21,8 +22,8 @@ void print_help() {
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Error: Database file not specified\n");
-        printf("Usage: %s <database_file>\n", argv[0]);
+        fprintf(stderr, "Error: Database file not specified\n");
+        fprintf(stderr, "Usage: %s <database_file>\n", argv[0]);
         return 1;
     }
 
@@ -75,10 +76,10 @@ int main(int argc, char *argv[]) {
                 if (db_insert(db, key, value) == STATUS_OK) {
                     printf("OK: Inserted key '%s'\n", key);
                 } else {
-                    printf("Error: Failed to insert key '%s'\n", key);
+                    fprintf(stderr, "Error: Failed to insert key '%s'\n", key);
                 }
             } else {
-                printf("Error: Invalid syntax. Use: INSERT <key> <value>\n");
+                fprintf(stderr, "Error: Invalid syntax. Use: INSERT <key> <value>\n");
             }
             continue;
         }
@@ -92,10 +93,10 @@ int main(int argc, char *argv[]) {
                     printf("%s\n", result);
                     free(result);
                 } else {
-                    printf("Key not found: %s\n", key);
+                    fprintf(stderr, "Key not found: %s\n", key);
                 }
             } else {
-                printf("Error: Invalid syntax. Use: GET <key>\n");
+                fprintf(stderr, "Error: Invalid syntax. Use: GET <key>\n");
             }
             continue;
         }
@@ -107,10 +108,10 @@ int main(int argc, char *argv[]) {
                 if (db_delete(db, key) == STATUS_OK) {
                     printf("OK: Deleted key '%s'\n", key);
                 } else {
-                    printf("Error: Key not found '%s'\n", key);
+                    fprintf(stderr, "Error: Key not found '%s'\n", key);
                 }
             } else {
-                printf("Error: Invalid syntax. Use: DELETE <key>\n");
+                fprintf(stderr, "Error: Invalid syntax. Use: DELETE <key>\n");
             }
             continue;
         }
@@ -129,8 +130,8 @@ int main(int argc, char *argv[]) {
 #endif
             continue;
         }
-        printf("Unknown command: %s\n", command);
-        printf("Type 'HELP' for available commands\n");
+        fprintf(stderr, "Unknown command: %s\n", command);
+        fprintf(stderr, "Type 'HELP' for available commands\n");
     }
 
     db_close(db);

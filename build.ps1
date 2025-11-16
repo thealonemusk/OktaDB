@@ -1,10 +1,17 @@
 # build.ps1 - PowerShell build script
 param(
-    [string]$action = "build"
+    [string]$action = "build",
+    [string]$mode = "debug"
 )
 
 $CC = "gcc"
-$CFLAGS = "-Wall -Wextra -std=c11 -g -Isrc -D_POSIX_C_SOURCE=200809L"
+
+if ($mode -eq "release") {
+    $CFLAGS = "-Wall -Wextra -std=c11 -O2 -Isrc"
+} else {
+    $CFLAGS = "-Wall -Wextra -std=c11 -g -Isrc"
+}
+
 $LDFLAGS = "-mconsole"
 $SRC_DIR = "src"
 $BUILD_DIR = "build"
@@ -18,32 +25,30 @@ function Create-Directories {
 
 function Build-Project {
     Write-Host "Building MyDB..." -ForegroundColor Green
-    
+
     Create-Directories
-    
+
     # Compile main.c
     Write-Host "Compiling main.c..."
     & $CC $CFLAGS.Split() -c "$SRC_DIR/main.c" -o "$BUILD_DIR/main.o"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    
+
     # Compile storage.c
     Write-Host "Compiling storage.c..."
-    & $CC $CFLAGS.Split() -c "$SRC_DIR/storage/storage.c" -o "$BUILD_DIR/storage/storage.o"
+    & $CC $CFLAGS.Split() -c "$SRC_DIR/storage/storage.c" -o "$BUILD_DIR/storage.o"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     # Compile types.c
     Write-Host "Compiling types.c..."
     & $CC $CFLAGS.Split() -c "$SRC_DIR/common/types.c" -o "$BUILD_DIR/types.o"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    
+
     # Link
     Write-Host "Linking..."
-    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage/storage.o" "$BUILD_DIR/types.o" $LDFLAGS.Split() -o $TARGET
+    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage.o" "$BUILD_DIR/types.o" $LDFLAGS.Split() -o $TARGET
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    
-    Write-Host "-----------------------" -ForegroundColor Green
-    Write-Host "Build Successful: $TARGET" -ForegroundColor Green 
-    Write-Host "-----------------------" -ForegroundColor Green
+
+    Write-Host "Build complete: $TARGET" -ForegroundColor Green
 }
 
 function Clean-Project {
@@ -71,10 +76,12 @@ switch ($action.ToLower()) {
         Build-Project
     }
     default {
-        Write-Host "Usage: .\build.ps1 [build|clean|run|rebuild]" -ForegroundColor Yellow
+        Write-Host "Usage: .\build.ps1 [build|clean|run|rebuild] [debug|release]" -ForegroundColor Yellow
         Write-Host "  build   - Compile the project (default)"
         Write-Host "  clean   - Remove build files"
         Write-Host "  run     - Build and run the database"
         Write-Host "  rebuild - Clean and build"
+        Write-Host "  debug   - Build with debug flags (default)"
+        Write-Host "  release - Build with optimization flags"
     }
 }

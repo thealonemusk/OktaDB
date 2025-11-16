@@ -27,11 +27,13 @@ struct Database {
 // Open or create a database
 Database* db_open(const char *filename) {
     if (!filename) {
+        fprintf(stderr, "Error: Filename is NULL in db_open\n");
         return NULL;
     }
 
     Database *db = malloc(sizeof(Database));
     if (!db) {
+        fprintf(stderr, "Error: Memory allocation failed for Database in db_open\n");
         return NULL;
     }
 
@@ -47,6 +49,7 @@ Database* db_open(const char *filename) {
     
     db->records = malloc(sizeof(Record) * db->capacity);
     if (!db->records) {
+        fprintf(stderr, "Error: Memory allocation failed for records in db_open\n");
         free(db->filename);
         free(db);
         return NULL;
@@ -115,6 +118,7 @@ static int find_record(Database *db, const char *key) {
 // Insert or update a key-value pair
 int db_insert(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
+        fprintf(stderr, "Error: Invalid arguments to db_insert\n");
         return STATUS_ERROR;
     }
     
@@ -155,6 +159,7 @@ int db_insert(Database *db, const char *key, const char *value) {
 // Get value by key
 char* db_get(Database *db, const char *key) {
     if (!db || !key) {
+        fprintf(stderr, "Error: Invalid arguments to db_get\n");
         return NULL;
     }
 
@@ -170,6 +175,7 @@ char* db_get(Database *db, const char *key) {
 // Delete a key-value pair
 int db_delete(Database *db, const char *key) {
     if (!db || !key) {
+        fprintf(stderr, "Error: Invalid arguments to db_delete\n");
         return STATUS_ERROR;
     }
 
@@ -187,16 +193,22 @@ int db_delete(Database *db, const char *key) {
 // List all keys
 void db_list(Database *db) {
     if (!db) {
+        fprintf(stderr, "Error: Invalid database instance in db_list\n");
         return;
     }
 
     int active_count = 0;
+    if ( db->count == 0) {
+        printf("Database is empty.\n");
+        return;
+    }
     printf("Keys in database:\n");
     printf("----------------------------------------\n");
     
     for (size_t i = 0; i < db->count; i++) {
         if (!db->records[i].deleted) {
-            printf("  %s\n", db->records[i].key);
+            printf("  %s ->  ", db->records[i].key);
+            printf(" %s\n", db->records[i].value);
             active_count++;
         }
     }
