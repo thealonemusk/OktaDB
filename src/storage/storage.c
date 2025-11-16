@@ -1,7 +1,7 @@
 #include "storage.h"
 #include <stdio.h>
 #include <stdlib.h>  // For memory allocation functions
-#include <string.h>  // For strdup
+#include <string.h>  // For my_strdup
 
 // Constants
 #define MAX_RECORDS 1000
@@ -35,7 +35,7 @@ Database* db_open(const char *filename) {
         return NULL;
     }
 
-    db->filename = strdup(filename);
+    db->filename = my_strdup(filename);
     if (!db->filename) {
         free(db);
         return NULL;
@@ -164,7 +164,7 @@ char* db_get(Database *db, const char *key) {
     }
 
     // Return a copy of the value
-    return strdup(db->records[idx].value);
+    return my_strdup(db->records[idx].value);
 }
 
 // Delete a key-value pair

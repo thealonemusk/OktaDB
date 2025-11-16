@@ -20,5 +20,5 @@ typedef enum {
     TYPE_FLOAT,
     TYPE_BOOL
 } DataType;
-
+char* my_strdup(const char* s);
 #endif // TYPES_H

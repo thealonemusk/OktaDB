@@ -30,14 +30,20 @@ function Build-Project {
     Write-Host "Compiling storage.c..."
     & $CC $CFLAGS.Split() -c "$SRC_DIR/storage/storage.c" -o "$BUILD_DIR/storage/storage.o"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    # Compile types.c
+    Write-Host "Compiling types.c..."
+    & $CC $CFLAGS.Split() -c "$SRC_DIR/common/types.c" -o "$BUILD_DIR/types.o"
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     
     # Link
     Write-Host "Linking..."
-    # & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage/storage.o" -o $TARGET
-    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage/storage.o" $LDFLAGS.Split() -o $TARGET
+    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage/storage.o" "$BUILD_DIR/types.o" $LDFLAGS.Split() -o $TARGET
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     
-    Write-Host "Build complete: $TARGET" -ForegroundColor Green
+    Write-Host "-----------------------" -ForegroundColor Green
+    Write-Host "Build Successful: $TARGET" -ForegroundColor Green 
+    Write-Host "-----------------------" -ForegroundColor Green
 }
 
 function Clean-Project {

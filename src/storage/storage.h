@@ -3,10 +3,7 @@
 
 #include <stddef.h>
 #include "../common/types.h"
-// Define strdup for Windows if not already defined
-#ifndef strdup
-#define strdup _strdup
-#endif
+
 // Opaque database structure
 // The actual implementation is hidden in storage.c
 typedef struct Database Database;

@@ -1,24 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>  // For memory allocation functions
-#include <string.h>  // For strdup
+#include <string.h>  // For my_strdup
 #include <strings.h> // For strncasecmp and strcasecmp
 #include "storage/storage.h"
 #include "common/types.h"
 
-// Define strdup for Windows if not already defined
-#ifndef strdup
-#define strdup _strdup
-#endif
+// Define my_strdup for Windows if not already defined
 
 void print_help() {
     printf("OktaDB - A learning database implementation\n");
     printf("Usage:\n");
-    printf("  INSERT <key> <value>  - Insert a key-value pair\n");
-    printf("  GET <key>             - Retrieve value by key\n");
-    printf("  DELETE <key>          - Delete a key-value pair\n");
-    printf("  LIST                  - List all keys\n");
-    printf("  HELP                  - Show this help\n");
-    printf("  EXIT                  - Exit the program\n");
+    printf("  INSERT/ADD <key> <value>  - Insert a key-value pair\n");
+    printf("  GET/FETCH <key>           - Retrieve value by key\n");
+    printf("  DELETE <key>              - Delete a key-value pair\n");
+    printf("  LIST                      - List all keys\n");
+    printf("  HELP                      - Show this help\n");
+    printf("  CLS                       - Clear the screen\n");
+    printf("  EXIT/QUIT/CLOSE           - Exit the program\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -60,7 +58,7 @@ int main(int argc, char *argv[]) {
         }
 
         // EXIT command
-        if (strcasecmp(command, "EXIT") == 0 || strcasecmp(command, "QUIT") == 0) {
+        if (strcasecmp(command, "EXIT") == 0 || strcasecmp(command, "QUIT") == 0 || strcasecmp(command, "CLOSE") == 0) {
             break;
         }
 
@@ -71,8 +69,9 @@ int main(int argc, char *argv[]) {
         }
 
         // INSERT command
-        if (strncasecmp(command, "INSERT ", 7) == 0) {
-            if (sscanf(command + 7, "%127s %255s", key, value) == 2) {
+        if (strncasecmp(command, "INSERT ", 7) == 0 || strncasecmp(command, "ADD ", 4) == 0) {
+            const char *cmd_ptr = (strncasecmp(command, "INSERT ", 7) == 0) ? command + 7 : command + 4;
+            if (sscanf(cmd_ptr, "%127s %255s", key, value) == 2) {
                 if (db_insert(db, key, value) == STATUS_OK) {
                     printf("OK: Inserted key '%s'\n", key);
                 } else {
@@ -85,8 +84,9 @@ int main(int argc, char *argv[]) {
         }
 
         // GET command
-        if (strncasecmp(command, "GET ", 4) == 0) {
-            if (sscanf(command + 4, "%127s", key) == 1) {
+        if (strncasecmp(command, "GET ", 4) == 0 || strncasecmp(command, "FETCH ", 6) == 0) {
+            const char *cmd_ptr = (strncasecmp(command, "GET ", 4) == 0) ? command + 4 : command + 6;
+            if (sscanf(cmd_ptr, "%127s", key) == 1) {
                 char *result = db_get(db, key);
                 if (result) {
                     printf("%s\n", result);
@@ -101,8 +101,9 @@ int main(int argc, char *argv[]) {
         }
 
         // DELETE command
-        if (strncasecmp(command, "DELETE ", 7) == 0) {
-            if (sscanf(command + 7, "%127s", key) == 1) {
+        if (strncasecmp(command, "DELETE ", 7) == 0  || strncasecmp(command, "DEL ", 4) == 0) {
+            const char *cmd_ptr = (strncasecmp(command, "DELETE ", 7) == 0) ? command + 7 : command + 4;
+            if (sscanf(cmd_ptr, "%127s", key) == 1) {
                 if (db_delete(db, key) == STATUS_OK) {
                     printf("OK: Deleted key '%s'\n", key);
                 } else {
@@ -115,11 +116,19 @@ int main(int argc, char *argv[]) {
         }
 
         // LIST command
-        if (strcasecmp(command, "LIST") == 0) {
+        if (strcasecmp(command, "LIST") == 0 || strcasecmp(command, "LIS") == 0) {
             db_list(db);
             continue;
         }
 
+        if (strcasecmp(command, "CLS") == 0) {
+#ifdef _WIN32
+            system("cls");
+#else
+            system("clear");
+#endif
+            continue;
+        }
         printf("Unknown command: %s\n", command);
         printf("Type 'HELP' for available commands\n");
     }
