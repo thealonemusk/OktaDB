@@ -28,24 +28,32 @@ function Build-Project {
 
     Create-Directories
 
-    # Compile main.c
-    Write-Host "Compiling main.c..."
-    & $CC $CFLAGS.Split() -c "$SRC_DIR/main.c" -o "$BUILD_DIR/main.o"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    # Find all .c files in the src directory
+    $sourceFiles = Get-ChildItem -Path "$SRC_DIR" -Recurse -Filter "*.c"
 
-    # Compile storage.c
-    Write-Host "Compiling storage.c..."
-    & $CC $CFLAGS.Split() -c "$SRC_DIR/storage/storage.c" -o "$BUILD_DIR/storage.o"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $objectFiles = @()
 
-    # Compile types.c
-    Write-Host "Compiling types.c..."
-    & $CC $CFLAGS.Split() -c "$SRC_DIR/common/custom.c" -o "$BUILD_DIR/custom.o"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    foreach ($file in $sourceFiles) {
+        $relativePath = $file.FullName.Substring($SRC_DIR.Length + 1)
+        $objectFile = "$BUILD_DIR/" + $relativePath.Replace("\\", "/").Replace(".c", ".o")
+        $objectDir = Split-Path -Path $objectFile -Parent
 
-    # Link
+        # Ensure the directory for the object file exists
+        if (-not (Test-Path $objectDir)) {
+            New-Item -ItemType Directory -Force -Path $objectDir | Out-Null
+        }
+
+        # Compile the .c file
+        Write-Host "Compiling $($file.FullName)..."
+        & $CC $CFLAGS.Split() -c $file.FullName -o $objectFile
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+        $objectFiles += $objectFile
+    }
+
+    # Link all object files
     Write-Host "Linking..."
-    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage.o" "$BUILD_DIR/custom.o" $LDFLAGS.Split() -o $TARGET
+    & $CC $objectFiles -o $TARGET $LDFLAGS.Split()
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Build complete: $TARGET" -ForegroundColor Green
