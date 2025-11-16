@@ -1,0 +1,25 @@
+# Ignore build artifacts
+build/
+*.o
+*.exe
+
+# Ignore binaries
+bin/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+*.tmp
+*.log
+*.bak
+*.swp
+
+# Ignore IDE-specific files
+.vscode/
+.idea/
+*.code-workspace
+
+# Ignore PowerShell history
+*.ps1.history

@@ -1,6 +1,5 @@
 # OktaDB
 
-
 **#**OktaDB **-** A Learning Database Project
 
 A simple key**-**value database implementation in C **for** learning database internals**.**
@@ -213,9 +212,7 @@ oktadb**>** EXIT
 **-**[**]** Hash table indexing
 **-**[**]** Improved serialization format
 **-**[**]** Error handling improvements
-**-**[**]** Unit tests
-
-### Phase **3**
+**-**[**]** Unit testsPhase **3**
 
 **-**[**]** B**-**tree index
 **-**[**]** Multiple data types
