@@ -1,233 +1,228 @@
+
 # OktaDB
 
-**#**OktaDB **-** A Learning Database Project
+A simple key-value database implementation in C for learning database internals.
 
-A simple key**-**value database implementation in C **for** learning database internals**.**
-
-Project Structure
+* [ ] Project Structure
 
 ```
-oktadb**/**
-├── src**/**
-│   ├── main**.**c              # Entry point and REPL
-│   ├── common**/**
-│   │   └── types**.**h         # Common type definitions
-│   └── storage**/**
-│       ├── storage**.**h       # Storage engine interface
-│       └── storage**.**c       # Storage engine implementation
-├── build**/**                  # Build **artifacts**(generated**)**
-├── bin**/**                    # Compiled **binaries**(generated**)**
-├── Makefile               # Build configuration
-└── README**.**md              # This file
+oktadb/
+├── src/
+│   ├── main.c              # Entry point and REPL
+│   ├── common/
+│   │   └── types.h         # Common type definitions
+│   └── storage/
+│       ├── storage.h       # Storage engine interface
+│       └── storage.c       # Storage engine implementation
+├── build/                  # Build artifacts (generated)
+├── bin/                    # Compiled binaries (generated)
+├── build.ps1              # PowerShell build script
+├── build.bat              # Batch build script
+└── README.md              # This file
 ```
 
 ## Building
 
+### Windows (PowerShell)
+
+```powershell
+# Build the project
+.\build.ps1
+
+# Build and run
+.\build.ps1 run
+
+# Clean build files
+.\build.ps1 clean
+
+# Rebuild from scratch
+.\build.ps1 rebuild
+```
+
+### Windows (Command Prompt)
+
+```cmd
+REM Build the project
+build.bat
+
+REM Build and run
+build.bat run
+
+REM Clean build files
+build.bat clean
+
+REM Rebuild from scratch
+build.bat rebuild
+```
+
+### Linux/Mac (if using Makefile)
+
 ```bash
-**#**Build the project
+# Build the project
 make
 
-**#**Build with debug symbols
+# Build with debug symbols
 make debug
 
-**#**Build optimized release version
+# Build optimized release version
 make release
 
-**#**Clean build files
+# Clean build files
 make clean
 ```
 
 ## Running
 
-```bash
-**#**Run with a database file
-**.**/bin**/**oktadb mydata**.**db
+```powershell
+# Windows
+.\bin\oktadb.exe mydata.db
 
-**#**Or use make
-make run
+# Or use the build script
+.\build.ps1 run
+```
+
+```bash
+# Linux/Mac
+./bin/oktadb mydata.db
 ```
 
 ## Usage
 
-Commands available in the REPL**:**
+Commands available in the REPL:
 
-**-** `INSERT **<**key**>**<value**>**` **-** Insert or update a key**-**value pair
-**-** `GET **<**key**>**` **-** Retrieve value by key
-**-** `DELETE **<**key**>**` **-** Delete a key**-**value pair
-**-** `LIST` **-** List all keys
-**-** `HELP` **-** Show help message
-**-** `EXIT` **-** Exit the program
+* `INSERT <key> <value>` - Insert or update a key-value pair
+* `GET <key>` - Retrieve value by key
+* `DELETE <key>` - Delete a key-value pair
+* `LIST` - List all keys
+* `HELP` - Show help message
+* `EXIT` - Exit the program
 
-Example session**:**
+### Example Session
 
 ```
-oktadb**>** INSERT user1 Alice
-OK**:** Inserted key **'user1'**
-oktadb**>** INSERT user2 Bob
-OK**:** Inserted key **'user2'**
-oktadb**>** GET user1
+oktadb> INSERT user1 Alice
+OK: Inserted key 'user1'
+oktadb> INSERT user2 Bob
+OK: Inserted key 'user2'
+oktadb> GET user1
 Alice
-oktadb**>** LIST
-Keys in database**:**
+oktadb> LIST
+Keys in database:
+----------------------------------------
   user1
   user2
-Total**:**2 active records
-oktadb**>** EXIT
+----------------------------------------
+Total: 2 active record(s)
+oktadb> DELETE user2
+OK: Deleted key 'user2'
+oktadb> EXIT
+
+Database closed. Goodbye!
 ```
 
 ## Current Features
 
-**-** Simple key**-**value storage
-**-** Persistent storage to disk
-**-** Basic CRUD operations
-**-** In**-**memory **indexing**(linear search**)**
+* Simple key-value storage
+* Persistent storage to disk
+* Basic CRUD operations (Create, Read, Update, Delete)
+* In-memory indexing (linear search)
+* Data persists between sessions
+* Maximum 1000 records
+* Keys up to 127 characters
+* Values up to 255 characters
 
 ## Roadmap
 
-### Phase **1**(Current**)**
+### Phase 1 (Current) ✅
 
-**-**[x**]** Basic file I**/**O
-**-**[x**]** Simple key**-**value operations
-**-**[x**]** REPL interface
+* [X] Basic file I/O
+* [X] Simple key-value operations
+* [X] REPL interface
+* [X] Persistent storage
 
-### Phase **2**(Next**)**
+### Phase 2 (Next)
 
-**-**[**]** Hash table indexing
-**-**[**]** Improved serialization format
-**-**[**]** Error handling improvements
-**-**[**]** Unit tests
+* [ ] Hash table indexing for O(1) lookups
+* [ ] Improved serialization format
+* [ ] Better error handling
+* [ ] Unit tests
+* [ ] Compaction (remove deleted records)
 
-### Phase **3**
+### Phase 3
 
-**-**[**]** B**-**tree index
-**-**[**]** Multiple data types
-**-**[**]** Basic SQL parser
-**-**[**]** WHERE clause support
+* [ ] B-tree index for range queries
+* [ ] Multiple data types (int, float, bool)
+* [ ] Basic SQL parser
+* [ ] WHERE clause support
+* [ ] SELECT with filtering
 
-### Phase **4**
+### Phase 4
 
-**-**[**]** JOIN operations
-**-**[**]** Transactions
-**-**[**]** Write**-**ahead logging
+* [ ] JOIN operations
+* [ ] Transactions (ACID properties)
+* [ ] Write-ahead logging (WAL)
+* [ ] Concurrent access support
+
+## Prerequisites
+
+* **Windows** : MinGW-w64 or similar GCC compiler
+* **Linux** : GCC (usually pre-installed)
+* **Mac** : Xcode Command Line Tools or GCC via Homebrew
+
+### Installing GCC on Windows
+
+1. **MinGW-w64** : Download from https://www.mingw-w64.org/
+2. **MSYS2** : Install from https://www.msys2.org/ then run:
+
+```bash
+   pacman -S mingw-w64-x86_64-gcc
+```
+
+1. Make sure GCC is in your PATH
 
 ## Learning Resources
 
-**-** Database Systems **Concepts**(Silberschatz**)**
-**-** Architecture of a Database **System**(Hellerstein et al**.**)
-**-** SQLite source code
-**-** PostgreSQL documentation
+* **Database Systems Concepts** by Silberschatz, Korth, and Sudarshan
+* **Architecture of a Database System** by Hellerstein et al.
+* **SQLite source code** : https://www.sqlite.org/src/doc/trunk/README.md
+* **PostgreSQL documentation** : https://www.postgresql.org/docs/
+* **Database Internals** by Alex Petrov
+* **CMU Database Systems Course** : https://15445.courses.cs.cmu.edu/
 
-**#**oktadb **-** A Learning Database Project
+## Technical Details
 
-A simple key**-**value database implementation in C **for** learning database internals**.**
+### Storage Format
 
-## Project Structure
+Currently using a simple binary format:
 
-```
-oktadb**/**
-├── src**/**
-│   ├── main**.**c              # Entry point and REPL
-│   ├── common**/**
-│   │   └── types**.**h         # Common type definitions
-│   └── storage**/**
-│       ├── storage**.**h       # Storage engine interface
-│       └── storage**.**c       # Storage engine implementation
-├── build**/**                  # Build **artifacts**(generated**)**
-├── bin**/**                    # Compiled **binaries**(generated**)**
-├── Makefile               # Build configuration
-└── README**.**md              # This file
-```
+1. Record count (8 bytes)
+2. Array of fixed-size records:
+   * Key (128 bytes)
+   * Value (256 bytes)
+   * Deleted flag (4 bytes)
 
-## Building
+### Future Improvements
 
-```bash
-**#**Build the project
-make
+* Variable-length encoding for space efficiency
+* Page-based storage for better cache locality
+* Index structures for faster lookups
+* Compression for values
+* Multi-threaded access
 
-**#**Build with debug symbols
-make debug
+## Contributing
 
-**#**Build optimized release version
-make release
+This is a learning project! Feel free to:
 
-**#**Clean build files
-make clean
-```
+* Add new features
+* Improve existing code
+* Fix bugs
+* Add documentation
+* Create tests
 
-## Running
+## License
 
-```bash
-**#**Run with a database file
-**.**/bin**/**oktadb mydata**.**db
+MIT License - Feel free to use this for learning!
 
-**#**Or use make
-make run
-```
+## Author
 
-## Usage
-
-Commands available in the REPL**:**
-
-**-** `INSERT **<**key**>**<value**>**` **-** Insert or update a key**-**value pair
-**-** `GET **<**key**>**` **-** Retrieve value by key
-**-** `DELETE **<**key**>**` **-** Delete a key**-**value pair
-**-** `LIST` **-** List all keys
-**-** `HELP` **-** Show help message
-**-** `EXIT` **-** Exit the program
-
-Example session**:**
-
-```
-oktadb**>** INSERT user1 Alice
-OK**:** Inserted key **'user1'**
-oktadb**>** INSERT user2 Bob
-OK**:** Inserted key **'user2'**
-oktadb**>** GET user1
-Alice
-oktadb**>** LIST
-Keys in database**:**
-  user1
-  user2
-Total**:**2 active records
-oktadb**>** EXIT
-```
-
-## Current Features
-
-**-** Simple key**-**value storage
-**-** Persistent storage to disk
-**-** Basic CRUD operations
-**-** In**-**memory **indexing**(linear search**)**
-
-## Roadmap
-
-### Phase **1**(Current**)**
-
-**-**[x**]** Basic file I**/**O
-**-**[x**]** Simple key**-**value operations
-**-**[x**]** REPL interface
-
-### Phase **2**(Next**)**
-
-**-**[**]** Hash table indexing
-**-**[**]** Improved serialization format
-**-**[**]** Error handling improvements
-**-**[**]** Unit testsPhase **3**
-
-**-**[**]** B**-**tree index
-**-**[**]** Multiple data types
-**-**[**]** Basic SQL parser
-**-**[**]** WHERE clause support
-
-### Phase **4**
-
-**-**[**]** JOIN operations
-**-**[**]** Transactions
-**-**[**]** Write**-**ahead logging
-
-## Learning Resources
-
-**-** Database Systems **Concepts**(Silberschatz**)**
-**-** Architecture of a Database **System**(Hellerstein et al**.**)
-**-** SQLite source code
-**-** PostgreSQL documentation
+Built as a learning project to understand database internals.
