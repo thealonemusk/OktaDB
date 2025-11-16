@@ -4,7 +4,7 @@ param(
 )
 
 $CC = "gcc"
-$CFLAGS = "-Wall -Wextra -std=c11 -g -Isrc"
+$CFLAGS = "-Wall -Wextra -std=c11 -g -Isrc -D_POSIX_C_SOURCE=200809L"
 $LDFLAGS = "-mconsole"
 $SRC_DIR = "src"
 $BUILD_DIR = "build"
