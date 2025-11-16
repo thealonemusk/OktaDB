@@ -2,7 +2,7 @@
 #define STORAGE_H
 
 #include <stddef.h>
-#include "../common/types.h"
+#include "../common/custom.h"
 
 // Opaque database structure
 // The actual implementation is hidden in storage.c

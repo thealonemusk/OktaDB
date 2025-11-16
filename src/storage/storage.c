@@ -1,7 +1,7 @@
 #include "storage.h"
 #include <stdio.h>
 #include <stdlib.h>  // For memory allocation functions
-#include <string.h>  // For my_strdup
+#include <string.h>  // For strdup
 
 // Constants
 #define MAX_RECORDS 1000

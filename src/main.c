@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>  // For memory allocation functions
-#include <string.h>  // For my_strdup
+#include <string.h>  // For strdup
 #include <strings.h> // For strncasecmp and strcasecmp
 #include "storage/storage.h"
-#include "common/types.h"
+#include "common/custom.h"
 
 // Define my_strdup for Windows if not already defined
 

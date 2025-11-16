@@ -40,12 +40,12 @@ function Build-Project {
 
     # Compile types.c
     Write-Host "Compiling types.c..."
-    & $CC $CFLAGS.Split() -c "$SRC_DIR/common/types.c" -o "$BUILD_DIR/types.o"
+    & $CC $CFLAGS.Split() -c "$SRC_DIR/common/custom.c" -o "$BUILD_DIR/custom.o"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     # Link
     Write-Host "Linking..."
-    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage.o" "$BUILD_DIR/types.o" $LDFLAGS.Split() -o $TARGET
+    & $CC "$BUILD_DIR/main.o" "$BUILD_DIR/storage.o" "$BUILD_DIR/custom.o" $LDFLAGS.Split() -o $TARGET
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Build complete: $TARGET" -ForegroundColor Green

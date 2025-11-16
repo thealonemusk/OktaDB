@@ -1,5 +1,5 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef CUSTOM_H
+#define CUSTOM_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -21,4 +21,4 @@ typedef enum {
     TYPE_BOOL
 } DataType;
 char* my_strdup(const char* s);
-#endif // TYPES_H
+#endif // CUSTOM_H
