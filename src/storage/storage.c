@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>  // For memory allocation functions
 #include <string.h>  // For strdup
+#include <stdbool.h> // For bool type
+#include <unistd.h> // For ftruncate and fileno
+#include <io.h> // For _chsize and _fileno
 
 // Constants
 #define MAX_RECORDS 1000
@@ -21,8 +24,9 @@ struct Database {
     Record *records;
     size_t count;       // Number of records (including deleted)
     size_t capacity;    // Maximum capacity
-    int modified;       // 1 if database has unsaved changes
-};
+    bool modified;      // 1 if database has unsaved changes
+    size_t tombstone_count;  // Number of deleted records
+};  
 
 // Open or create a database
 Database* db_open(const char *filename) {
@@ -45,7 +49,8 @@ Database* db_open(const char *filename) {
 
     db->capacity = MAX_RECORDS;
     db->count = 0;
-    db->modified = 0;
+    db->modified = false;
+    db->tombstone_count = 0;
     
     db->records = malloc(sizeof(Record) * db->capacity);
     if (!db->records) {
@@ -79,29 +84,43 @@ Database* db_open(const char *filename) {
 
 // Close database and save to disk
 void db_close(Database *db) {
-    if (!db) {
-        return;
+    if (!db) return;
+
+    // Compact BEFORE saving (never after free!)
+    if (db->modified) {
+        db_compact(db);
     }
 
-    // Save to disk if there are unsaved changes
+    // Save if modified
     if (db->modified) {
         FILE *f = fopen(db->filename, "wb");
-        if (f) {
-            // Write count then records
-            fwrite(&db->count, sizeof(size_t), 1, f);
-            fwrite(db->records, sizeof(Record), db->count, f);
+        if (!f) {
+            fprintf(stderr, "Warning: Could not save database to %s\n", db->filename);
+        } else {
+            // Write count
+            if (fwrite(&db->count, sizeof(size_t), 1, f) != 1) {
+                fprintf(stderr, "Error: Failed to write record count.\n");
+            }
+
+            // Write records
+            if (db->count > 0) {
+                size_t written = fwrite(db->records, sizeof(Record), db->count, f);
+                if (written != db->count) {
+                    fprintf(stderr, "Error: Failed to write all records.\n");
+                }
+            }
+
             fclose(f);
             printf("Saved %zu records to disk\n", db->count);
-        } else {
-            fprintf(stderr, "Warning: Could not save database to %s\n", db->filename);
         }
     }
 
-    // Free memory
+    // Free all memory
     free(db->records);
     free(db->filename);
     free(db);
 }
+
 
 // Internal helper: find a record by key
 // Returns index if found, -1 if not found
@@ -152,7 +171,7 @@ int db_insert(Database *db, const char *key, const char *value) {
         db->count++;
     }
 
-    db->modified = 1;
+    db->modified = true;
     return STATUS_OK;
 }
 
@@ -186,7 +205,16 @@ int db_delete(Database *db, const char *key) {
 
     // Mark as deleted (tombstone)
     db->records[idx].deleted = 1;
-    db->modified = 1;
+    db->tombstone_count++;
+    db->modified = true;
+
+    // Trigger automatic compaction if tombstones exceed threshold
+    size_t tombstone_threshold = db->capacity / 5;  // 20% of capacity
+    if (db->tombstone_count > tombstone_threshold) {
+        printf("Tombstone threshold exceeded. Triggering compaction...\n");
+        db_compact(db);
+    }
+
     return STATUS_OK;
 }
 
@@ -215,4 +243,41 @@ void db_list(Database *db) {
     
     printf("----------------------------------------\n");
     printf("Total: %d active record(s)\n", active_count);
+}
+
+// Add a new function to compact the database
+void db_compact(Database *db) {
+    if (!db) {
+        fprintf(stderr, "Error: Invalid database instance in db_compact\n");
+        return;
+    }
+
+    // Allocate a new array for active records
+    Record *new_records = malloc(sizeof(Record) * db->capacity);
+    if (!new_records) {
+        fprintf(stderr, "Error: Memory allocation failed in db_compact\n");
+        return;
+    }
+
+    size_t new_count = 0;
+
+    // Copy active records to the new array
+    for (size_t i = 0; i < db->count; i++) {
+        if (!db->records[i].deleted) {
+            new_records[new_count++] = db->records[i];
+        }
+    }
+
+    // Replace the old array with the new one
+    free(db->records);
+    db->records = new_records;
+    db->count = new_count;
+
+    // Reset tombstone count
+    db->tombstone_count = 0;
+
+    // Mark the database as modified
+    db->modified = true;
+
+    printf("Compaction complete. %zu active records retained.\n", new_count);
 }

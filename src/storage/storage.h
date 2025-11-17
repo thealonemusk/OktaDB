@@ -52,4 +52,10 @@ int db_delete(Database *db, const char *key);
  */
 void db_list(Database *db);
 
+/**
+ * Compact the database by removing deleted records
+ * @param db Database instance
+ */
+void db_compact(Database *db);
+
 #endif // STORAGE_H
