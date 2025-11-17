@@ -73,7 +73,7 @@ db_close(db);
 ---
 
 ## Compaction
-Compaction removes deleted records (tombstones) and reorganizes the database to reclaim space. For more details, see `Documentation/compaction.md`.
+Compaction removes deleted records (tombstones) and reorganizes the database to reclaim space. For more details, see `documentation/compaction.md`.
 
 ---
 
