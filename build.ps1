@@ -1,4 +1,3 @@
-# build.ps1 - PowerShell build script
 param(
     [string]$action = "build",
     [string]$mode = "debug"
