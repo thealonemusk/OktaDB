@@ -27,7 +27,7 @@ OktaDB/
 │       ├── storage.h
 ├── build.ps1           # Build script
 ├── README.md           # Project overview
-├── Documentation/      # Detailed documentation
+├── documentation/      # Detailed documentation
 │   ├── compaction.md   # Details about compaction
 ```
 
@@ -73,7 +73,7 @@ db_close(db);
 ---
 
 ## Compaction
-Compaction removes deleted records (tombstones) and reorganizes the database to reclaim space. For more details, see `Documentation/compaction.md`.
+Compaction removes deleted records (tombstones) and reorganizes the database to reclaim space. For more details, see `documentation/compaction.md`.
 
 ---
 
