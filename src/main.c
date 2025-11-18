@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
                 if (db_update(db, key, value) == STATUS_OK) {
                     printf("OK: Updated key '%s'\n", key);
                 } else {
-                    fprintf(stderr, "Error: Failed to update key'%s'. Key not found or invalid.\n", key);
+                    fprintf(stderr, "Error: Failed to update key '%s'. Key not found or invalid.\n", key);
                 }
             } else {
                 fprintf(stderr, "Error: Invalid syntax. Use: UPDATE <key> <value>\n");
