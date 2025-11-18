@@ -71,5 +71,7 @@ void hash_table_delete(const char *key) {
 void hash_table_clear() {
     memset(hash_table, 0, sizeof(hash_table));
     hash_node_pool_index = 0; // Reset the memory pool
+#ifdef DEBUG
     printf("Hashtable cleared.\n");
+#endif
 }
