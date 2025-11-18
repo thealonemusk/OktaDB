@@ -245,7 +245,7 @@ void db_compact(Database *db) {
         return;
     }
 
-    static Record temp_records[MAX_RECORDS]; // Use static temporary array
+    Record temp_records[MAX_RECORDS]; // Use local temporary array
     size_t new_count = 0;
 
     // Copy active records to the temporary array
