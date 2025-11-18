@@ -1,4 +1,3 @@
-
 # OktaDB
 
 A simple key-value database implementation in C for learning database internals.
@@ -10,7 +9,7 @@ oktadb/
 ├── src/
 │   ├── main.c              # Entry point and REPL
 │   ├── common/
-│   │   └── types.h         # Common type definitions
+│   │   └── utility.h         # e definitions
 │   └── storage/
 │       ├── storage.h       # Storage engine interface
 │       └── storage.c       # Storage engine implementation
@@ -131,6 +130,13 @@ Database closed. Goodbye!
 * Keys up to 127 characters
 * Values up to 255 characters
 
+## Updated Features
+
+* Removed all dynamic memory allocations (`malloc`) for improved stability.
+* `db_get` now returns direct pointers to database records, avoiding unnecessary string duplication.
+* Improved memory management to eliminate potential leaks.
+* Added compaction functionality to remove deleted records and reclaim space.
+
 ## Roadmap
 
 ### Phase 1 (Current) ✅
@@ -142,11 +148,11 @@ Database closed. Goodbye!
 
 ### Phase 2 (Next)
 
+* [X] Compaction (remove deleted records)
 * [ ] Hash table indexing for O(1) lookups
 * [ ] Improved serialization format
 * [ ] Better error handling
 * [ ] Unit tests
-* [ ] Compaction (remove deleted records)
 
 ### Phase 3
 
@@ -201,13 +207,11 @@ Currently using a simple binary format:
    * Value (256 bytes)
    * Deleted flag (4 bytes)
 
-### Future Improvements
+### Improvements
 
-* Variable-length encoding for space efficiency
-* Page-based storage for better cache locality
-* Index structures for faster lookups
-* Compression for values
-* Multi-threaded access
+* Removed dynamic memory allocations for `Database` and `Record` structures.
+* Static memory allocation ensures predictable memory usage.
+* Compaction reclaims space by removing tombstones (deleted records).
 
 ## Contributing
 

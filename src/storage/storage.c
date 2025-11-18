@@ -50,12 +50,17 @@ Database* db_open(const char *filename) {
 
         // Read the count
         if (fread(&read_count, sizeof(size_t), 1, f) == 1) {
-            if (read_count <= db->capacity) {
-                // Read the records
-                size_t read = fread(db->records, sizeof(Record), read_count, f);
-                db->count = read;
-                printf("Loaded %zu records from disk\n", db->count);
+            for (size_t i = 0; i < read_count; i++) {
+                Record temp;
+                if (fread(&temp, sizeof(Record), 1, f) == 1) {
+                    if (!temp.deleted) { // Skip deleted records
+                        db->records[db->count++] = temp;
+                    } else {
+                        db->tombstone_count++;
+                    }
+                }
             }
+            printf("Loaded %zu records from disk\n", db->count);
         }
         fclose(f);
     } else {
@@ -201,7 +206,7 @@ int db_delete(Database *db, const char *key) {
     return STATUS_OK;
 }
 
-// List all keys
+// Update db_list to skip empty or uninitialized records
 void db_list(Database *db) {
     if (!db) {
         fprintf(stderr, "Error: Invalid database instance in db_list\n");
@@ -209,21 +214,21 @@ void db_list(Database *db) {
     }
 
     int active_count = 0;
-    if ( db->count == 0) {
+    if (db->count == 0) {
         printf("Database is empty.\n");
         return;
     }
+
     printf("Keys in database:\n");
     printf("----------------------------------------\n");
-    
+
     for (size_t i = 0; i < db->count; i++) {
-        if (!db->records[i].deleted) {
-            printf("  %s ->  ", db->records[i].key);
-            printf(" %s\n", db->records[i].value);
+        if (!db->records[i].deleted && strlen(db->records[i].key) > 0) {
+            printf("  %s ->  %s\n", db->records[i].key, db->records[i].value);
             active_count++;
         }
     }
-    
+
     printf("----------------------------------------\n");
     printf("Total: %d active record(s)\n", active_count);
 }
@@ -246,7 +251,7 @@ int db_update(Database *db, const char *key, const char *value) {
     return STATUS_OK;
 }
 
-// Modify db_compact to use a static temporary array
+// Enhance db_compact to ensure proper handling of tombstone data
 void db_compact(Database *db) {
     if (!db) {
         fprintf(stderr, "Error: Invalid database instance in db_compact\n");
@@ -260,6 +265,8 @@ void db_compact(Database *db) {
     for (size_t i = 0; i < db->count; i++) {
         if (!db->records[i].deleted) {
             temp_records[new_count++] = db->records[i];
+        } else {
+            printf("Skipping tombstone record: %s\n", db->records[i].key);
         }
     }
 
@@ -272,4 +279,23 @@ void db_compact(Database *db) {
 
     db->modified = true;
     printf("Compaction complete. %zu active records retained.\n", new_count);
+
+    // Save the database to persist changes
+    FILE *f = fopen(db->filename, "wb");
+    if (!f) {
+        fprintf(stderr, "Warning: Could not save database to %s after compaction\n", db->filename);
+        return;
+    }
+
+    // Write count and records
+    fwrite(&db->count, sizeof(size_t), 1, f);
+    fwrite(db->records, sizeof(Record), db->count, f);
+    fclose(f);
+    printf("Database saved after compaction.\n");
+
+    // Debug: Verify in-memory database state
+    printf("In-memory database state after compaction:\n");
+    for (size_t i = 0; i < db->count; i++) {
+        printf("  %s -> %s\n", db->records[i].key, db->records[i].value);
+    }
 }
