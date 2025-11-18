@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include "storage/storage.h"
-#include "common/utility.h"
+#include "db_core.h"
+#include "utility.h"
 
 // Function to print help documentation
 void print_help() {
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
         }
 
         // LIST command
-        if (strcasecmp(command, "LIST") == 0 || strcasecmp(command, "LIS") == 0) {
+        if (strcasecmp(command, "LIST") == 0 || strcasecmp(command, "LS") == 0) {
             db_list(db);
             continue;
         }

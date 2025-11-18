@@ -24,7 +24,7 @@ OktaDB/
 │   │   ├── utility.h
 │   ├── storage/
 │       ├── storage.c   # Core database logic
-│       ├── storage.h
+│       ├── db_core.h
 ├── build.ps1           # Build script
 ├── README.md           # Project overview
 ├── documentation/      # Detailed documentation

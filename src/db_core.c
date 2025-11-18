@@ -1,10 +1,13 @@
-#include "storage.h" // Include the header file for declarations
+#include "db_core.h" // Include the header file for declarations
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <io.h>
 #include <stdint.h>
+
+static Database db_instance;
+static Record db_records[MAX_RECORDS];
 
 // Open or create a database
 Database* db_open(const char *filename) {
@@ -150,10 +153,6 @@ const char* db_get(Database *db, const char *key) {
         printf("Key '%s' not found in db_get.\n", key);
         return NULL;
     }
-
-    // Debug log
-    printf("db_get: Found key '%s' at index %d with value '%s'.\n", key, idx, db->records[idx].value);
-
     // Return a direct pointer to the value in the record
     return db->records[idx].value;
 }
@@ -213,7 +212,7 @@ void db_list(Database *db) {
     printf("Total: %d active record(s)\n", active_count);
 }
 
-// Ensure db_update strictly updates existing keys
+// Fix db_update to strictly update existing keys
 int db_update(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
         fprintf(stderr, "Error: Invalid arguments to db_update\n");
@@ -230,10 +229,7 @@ int db_update(Database *db, const char *key, const char *value) {
     strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
     db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
     db->modified = true;
-
-    // Debug log
-    printf("db_update: Updated key '%s' at index %d with new value '%s'.\n", key, idx, value);
-
+    printf("OK: Updated key '%s' with new value '%s'.\n", key, value);
     return STATUS_OK;
 }
 

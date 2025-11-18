@@ -92,3 +92,55 @@ switch ($action.ToLower()) {
         Write-Host "  release - Build with optimization flags"
     }
 }
+
+# Ensure the build script handles renamed files and updated structure
+
+# Define the build process
+if ($args -contains 'BUILD') {
+    Write-Host "Building the project..."
+
+    # Find all .c files in src/ directory
+    $sourceFiles = Get-ChildItem -Path "src" -Recurse -Filter "*.c" | ForEach-Object { $_.FullName }
+
+    # Compile all .c files into a single executable
+    gcc -o bin/oktadb.exe $sourceFiles -I src/common -Wall -Wextra
+
+    Write-Host "Build completed."
+}
+
+# Define the clean process
+if ($args -contains 'CLEAN') {
+    Write-Host "Cleaning build artifacts and database files..."
+
+    # Remove build artifacts
+    Remove-Item -Recurse -Force build/* 2>$null
+    Remove-Item -Recurse -Force bin/* 2>$null
+
+    # Remove .db files
+    Get-ChildItem -Path . -Recurse -Include *.db | Remove-Item -Force
+
+    Write-Host "Clean operation completed."
+}
+
+# Define the rebuild process
+if ($args -contains 'REBUILD') {
+    Write-Host "Rebuilding the project..."
+
+    # Clean and then build
+    & $MyInvocation.MyCommand.Path CLEAN
+    & $MyInvocation.MyCommand.Path BUILD
+
+    Write-Host "Rebuild completed."
+}
+
+# Define the run process
+if ($args -contains 'RUN') {
+    Write-Host "Running the project..."
+
+    # Run the compiled binary
+    if (Test-Path bin/oktadb.exe) {
+        & bin/oktadb.exe
+    } else {
+        Write-Host "Error: Executable not found. Build the project first."
+    }
+}

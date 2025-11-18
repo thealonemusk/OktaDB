@@ -11,7 +11,7 @@ oktadb/
 │   ├── common/
 │   │   └── utility.h         # e definitions
 │   └── storage/
-│       ├── storage.h       # Storage engine interface
+│       ├── db_core.h       # Storage engine interface
 │       └── storage.c       # Storage engine implementation
 ├── build/                  # Build artifacts (generated)
 ├── bin/                    # Compiled binaries (generated)
