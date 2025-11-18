@@ -2,7 +2,7 @@
 #define HASHTABLE_H
 
 #include <stddef.h>
-#include "utility.h" // Corrected include path for custom.h
+#include "utility.h" // Corrected include path for utility.h
 
 // Define the hashtable structure
 #define HASH_TABLE_SIZE 1024
