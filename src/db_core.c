@@ -97,7 +97,7 @@ void db_close(Database *db) {
 }
 
 
-// Insert or update a key-value pair
+// Insert a new key-value pair
 int db_insert(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
         fprintf(stderr, "Error: Invalid arguments to db_insert\n");
@@ -112,30 +112,27 @@ int db_insert(Database *db, const char *key, const char *value) {
 
     // Check if key already exists
     int idx = hash_table_find(key);
-
     if (idx >= 0) {
-        // Update existing record
-        strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
-        db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
-        printf("db_insert: Updated key '%s' at index %d with new value '%s'.\n", key, idx, value);
-    } else {
-        // Insert new record
-        if (db->count >= db->capacity) {
-            fprintf(stderr, "Error: Database is full\n");
-            return STATUS_FULL;
-        }
-
-        strncpy(db->records[db->count].key, key, MAX_KEY_LEN - 1);
-        db->records[db->count].key[MAX_KEY_LEN - 1] = '\0';
-
-        strncpy(db->records[db->count].value, value, MAX_VALUE_LEN - 1);
-        db->records[db->count].value[MAX_VALUE_LEN - 1] = '\0';
-
-        db->records[db->count].deleted = false;
-        hash_table_insert(key, db->count); // Add to hashtable
-        printf("db_insert: Inserted key '%s' at index %zu with value '%s'.\n", key, db->count, value);
-        db->count++;
+        fprintf(stderr, "Error: Key '%s' already exists\n", key);
+        return STATUS_EXISTS;
     }
+
+    // Insert new record
+    if (db->count >= db->capacity) {
+        fprintf(stderr, "Error: Database is full\n");
+        return STATUS_FULL;
+    }
+
+    strncpy(db->records[db->count].key, key, MAX_KEY_LEN - 1);
+    db->records[db->count].key[MAX_KEY_LEN - 1] = '\0';
+
+    strncpy(db->records[db->count].value, value, MAX_VALUE_LEN - 1);
+    db->records[db->count].value[MAX_VALUE_LEN - 1] = '\0';
+
+    db->records[db->count].deleted = false;
+    hash_table_insert(key, db->count); // Add to hashtable
+    printf("db_insert: Inserted key '%s' at index %zu with value '%s'.\n", key, db->count, value);
+    db->count++;
 
     db->modified = true;
     return STATUS_OK;
@@ -212,16 +209,23 @@ void db_list(Database *db) {
     printf("Total: %d active record(s)\n", active_count);
 }
 
-// Fix db_update to strictly update existing keys
+// Update the value of an existing key
 int db_update(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
         fprintf(stderr, "Error: Invalid arguments to db_update\n");
         return STATUS_ERROR;
     }
 
+    // Find the index of the key in the hash table
     int idx = hash_table_find(key);
-    if (idx < 0 || db->records[idx].deleted) {
+    if (idx < 0) {
         fprintf(stderr, "Error: Key '%s' not found for update\n", key);
+        return STATUS_NOT_FOUND;
+    }
+
+    // Ensure the record is not marked as deleted
+    if (db->records[idx].deleted) {
+        fprintf(stderr, "Error: Key '%s' is marked as deleted\n", key);
         return STATUS_NOT_FOUND;
     }
 
@@ -229,6 +233,7 @@ int db_update(Database *db, const char *key, const char *value) {
     strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
     db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
     db->modified = true;
+
     printf("OK: Updated key '%s' with new value '%s'.\n", key, value);
     return STATUS_OK;
 }
