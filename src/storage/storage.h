@@ -2,7 +2,7 @@
 #define STORAGE_H
 
 #include <stddef.h>
-#include "../common/custom.h"
+#include "../common/utility.h"
 
 // Opaque database structure
 // The actual implementation is hidden in storage.c
@@ -36,7 +36,7 @@ int db_insert(Database *db, const char *key, const char *value);
  * @param key Key to search for
  * @return Dynamically allocated value string (caller must free), or NULL if not found
  */
-char* db_get(Database *db, const char *key);
+const char* db_get(Database *db, const char *key);
 
 /**
  * Delete a key-value pair
@@ -51,6 +51,12 @@ int db_delete(Database *db, const char *key);
  * @param db Database instance
  */
 void db_list(Database *db);
+
+/**
+ * Update the value for an existing key
+ * @param db Database instance
+ */
+int db_update(Database *db, const char *key, const char *value);
 
 /**
  * Compact the database by removing deleted records

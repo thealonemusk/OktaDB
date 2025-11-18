@@ -1,11 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h>  // For memory allocation functions
-#include <string.h>  // For strdup
-#include <strings.h> // For strncasecmp and strcasecmp
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 #include "storage/storage.h"
-#include "common/custom.h"
-
-// Define my_strdup for Windows if not already defined
+#include "common/utility.h"
 
 // Function to print help documentation
 void print_help() {
@@ -14,6 +12,7 @@ void print_help() {
     printf("  INSERT/ADD <key> <value>  - Insert a key-value pair\n");
     printf("  GET/FETCH <key>           - Retrieve value by key\n");
     printf("  DELETE <key>              - Delete a key-value pair\n");
+    printf("  UPDATE <key> <value>      - Update a key-value pair\n");
     printf("  LIST                      - List all keys\n");
     printf("  HELP                      - Show this help\n");
     printf("  CLS                       - Clear the screen\n");
@@ -88,10 +87,9 @@ int main(int argc, char *argv[]) {
         if (strncasecmp(command, "GET ", 4) == 0 || strncasecmp(command, "FETCH ", 6) == 0) {
             const char *cmd_ptr = (strncasecmp(command, "GET ", 4) == 0) ? command + 4 : command + 6;
             if (sscanf(cmd_ptr, "%127s", key) == 1) {
-                char *result = db_get(db, key);
+                const char *result = db_get(db, key);
                 if (result) {
                     printf("%s\n", result);
-                    free(result);
                 } else {
                     fprintf(stderr, "Key not found: %s\n", key);
                 }
@@ -122,6 +120,21 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
+        // UPDATE command
+        if (strncasecmp(command, "UPDATE ", 7) == 0) {
+            if (sscanf(command + 7, "%127s %255s", key, value) == 2) {
+                if (db_insert(db, key, value) == STATUS_OK) {
+                    printf("OK: Updated key '%s'\n", key);
+                } else {
+                    fprintf(stderr, "Error: Failed to update key '%s'. Database might be full or invalid key.\n", key);
+                }
+            } else {
+                fprintf(stderr, "Error: Invalid syntax. Use: UPDATE <key> <value>\n");
+            }
+            continue;
+        }
+        
+        // CLS command
         if (strcasecmp(command, "CLS") == 0) {
 #ifdef _WIN32
             system("cls");
