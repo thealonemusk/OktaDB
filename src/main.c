@@ -5,8 +5,6 @@
 #include "storage/storage.h"
 #include "common/utility.h"
 
-// Define my_strdup for Windows if not already defined
-
 // Function to print help documentation
 void print_help() {
     printf("OktaDB - A learning database implementation\n");
@@ -89,10 +87,9 @@ int main(int argc, char *argv[]) {
         if (strncasecmp(command, "GET ", 4) == 0 || strncasecmp(command, "FETCH ", 6) == 0) {
             const char *cmd_ptr = (strncasecmp(command, "GET ", 4) == 0) ? command + 4 : command + 6;
             if (sscanf(cmd_ptr, "%127s", key) == 1) {
-                char *result = db_get(db, key);
+                const char *result = db_get(db, key);
                 if (result) {
                     printf("%s\n", result);
-                    free(result);
                 } else {
                     fprintf(stderr, "Key not found: %s\n", key);
                 }

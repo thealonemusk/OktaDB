@@ -10,16 +10,16 @@
 typedef struct {
     char key[MAX_KEY_LEN];
     char value[MAX_VALUE_LEN];
-    int deleted;  // 1 if deleted, 0 if active
+    bool deleted;  // true if deleted, false if active
 } Record;
 
 // Database structure (hidden from users)
 struct Database {
-    char *filename;
+    char filename[MAX_KEY_LEN];
     Record *records;
     size_t count;       // Number of records (including deleted)
     size_t capacity;    // Maximum capacity
-    bool modified;      // 1 if database has unsaved changes
+    bool modified;      // true if database has unsaved changes
     size_t tombstone_count;  // Number of deleted records
 };  
 
@@ -35,7 +35,8 @@ Database* db_open(const char *filename) {
     }
 
     Database *db = &db_instance; // Use statically allocated instance
-    db->filename = strdup(filename); 
+    strncpy(db->filename, filename, MAX_KEY_LEN - 1); // Directly copy filename
+    db->filename[MAX_KEY_LEN - 1] = '\0';
     db->capacity = MAX_RECORDS;
     db->count = 0;
     db->modified = false;
@@ -149,7 +150,7 @@ int db_insert(Database *db, const char *key, const char *value) {
         strncpy(db->records[db->count].value, value, MAX_VALUE_LEN - 1);
         db->records[db->count].value[MAX_VALUE_LEN - 1] = '\0';
         
-        db->records[db->count].deleted = 0;
+        db->records[db->count].deleted = false;
         db->count++;
     }
 
@@ -158,7 +159,7 @@ int db_insert(Database *db, const char *key, const char *value) {
 }
 
 // Get value by key
-char* db_get(Database *db, const char *key) {
+const char* db_get(Database *db, const char *key) {
     if (!db || !key) {
         fprintf(stderr, "Error: Invalid arguments to db_get\n");
         return NULL;
@@ -169,8 +170,8 @@ char* db_get(Database *db, const char *key) {
         return NULL;
     }
 
-    // Return a copy of the value
-    return my_strdup(db->records[idx].value);
+    // Return a direct pointer to the value in the record
+    return db->records[idx].value;
 }
 
 // Delete a key-value pair
@@ -186,7 +187,7 @@ int db_delete(Database *db, const char *key) {
     }
 
     // Mark as deleted (tombstone)
-    db->records[idx].deleted = 1;
+    db->records[idx].deleted = true;
     db->tombstone_count++;
     db->modified = true;
 

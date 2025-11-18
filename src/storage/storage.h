@@ -36,7 +36,7 @@ int db_insert(Database *db, const char *key, const char *value);
  * @param key Key to search for
  * @return Dynamically allocated value string (caller must free), or NULL if not found
  */
-char* db_get(Database *db, const char *key);
+const char* db_get(Database *db, const char *key);
 
 /**
  * Delete a key-value pair

@@ -26,5 +26,4 @@ typedef enum {
     TYPE_BOOL
 } DataType;
 
-char* my_strdup(const char* s);
 #endif // UTILITY_H
