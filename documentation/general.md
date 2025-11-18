@@ -6,7 +6,8 @@ OktaDB is a lightweight, in-memory database with persistent storage. It supports
 ---
 
 ## Features
-- **Insert/Update**: Add or update key-value pairs.
+- **Insert**: Add new key-value pairs.
+- **Update**: Modify existing key-value pairs.
 - **Retrieve**: Fetch values by key.
 - **Delete**: Mark records as deleted (tombstones).
 - **Compaction**: Reclaim space by removing tombstones.
@@ -18,17 +19,19 @@ OktaDB is a lightweight, in-memory database with persistent storage. It supports
 ```
 OktaDB/
 ├── src/
+│   ├── db_core.c       # Core database logic
+│   ├── db_core.h
+│   ├── hashtable.c     # Hash table implementation
+│   ├── hashtable.h
 │   ├── main.c          # Entry point of the application
-│   ├── common/
-│   │   ├── utility.c    # Utility functions
-│   │   ├── utility.h
-│   ├── storage/
-│       ├── storage.c   # Core database logic
-│       ├── db_core.h
+│   ├── utility.h       # Utility functions
+│   └── storage/
+│       ├── storage.c   # Storage-related logic
 ├── build.ps1           # Build script
 ├── README.md           # Project overview
 ├── documentation/      # Detailed documentation
 │   ├── compaction.md   # Details about compaction
+│   ├── general.md      # General documentation
 ```
 
 ---
