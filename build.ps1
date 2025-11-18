@@ -92,5 +92,3 @@ switch ($action.ToLower()) {
         Write-Host "  release - Build with optimization flags"
     }
 }
-
-# Ensure the build script handles renamed files and updated structure
