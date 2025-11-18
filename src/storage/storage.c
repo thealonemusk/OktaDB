@@ -35,7 +35,7 @@ Database* db_open(const char *filename) {
     }
 
     Database *db = &db_instance; // Use statically allocated instance
-    db->filename = my_strdup(filename); 
+    db->filename = strdup(filename); 
     db->capacity = MAX_RECORDS;
     db->count = 0;
     db->modified = false;
