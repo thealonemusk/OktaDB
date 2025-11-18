@@ -229,13 +229,20 @@ void db_list(Database *db) {
 
 // Update the value for an existing key
 int db_update(Database *db, const char *key, const char *value) {
-    if (db_insert(db, key, value) == STATUS_OK) {
-        printf("OK: Updated key '%s'\n", key);
-        return STATUS_OK;
-    } else {
-        fprintf(stderr, "Error: Failed to update key '%s'\n", key);
+    if (!db || !key || !value) {
+        fprintf(stderr, "Error: Invalid arguments to db_update\n");
         return STATUS_ERROR;
     }
+    int idx = find_record(db, key);
+    if (idx < 0 || db->records[idx].deleted) {
+        fprintf(stderr, "Error: Key '%s' not found for update\n", key);
+        return STATUS_NOT_FOUND;
+    }
+    strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
+    db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
+    db->modified = true;
+    printf("OK: Updated key '%s'\n", key);
+    return STATUS_OK;
 }
 
 // Modify db_compact to use a static temporary array
