@@ -11,7 +11,8 @@ if ($mode -eq "release") {
     $CFLAGS = "-Wall -Wextra -std=c11 -g -Isrc"
 }
 
-$LDFLAGS = "-mconsole"
+# Use -mconsole on Windows, no special flags on Unix
+$LDFLAGS = if ($IsWindows) { "-mconsole" } else { "" }
 $SRC_DIR = "src"
 $BUILD_DIR = "build"
 $BIN_DIR = "bin"
@@ -52,7 +53,11 @@ function Build-Project {
 
     # Link all object files
     Write-Host "Linking..."
-    & $CC $objectFiles -o $TARGET $LDFLAGS.Split()
+    if ($LDFLAGS) {
+        & $CC $objectFiles -o $TARGET $LDFLAGS.Split()
+    } else {
+        & $CC $objectFiles -o $TARGET
+    }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "Build complete: $TARGET" -ForegroundColor Green
