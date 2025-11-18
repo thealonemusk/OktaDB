@@ -4,7 +4,7 @@
 #include <stdio.h>  // For debugging
 
 static HashNode hash_table[HASH_TABLE_SIZE];
-static HashNode hash_node_pool[HASH_TABLE_SIZE]; // Static memory pool
+static HashNode hash_node_pool[MAX_RECORDS]; // Static memory pool sized to database capacity
 static size_t hash_node_pool_index = 0;
 
 // Hash function
@@ -18,7 +18,7 @@ static uint32_t hash_function(const char *key) {
 
 // Allocate a new HashNode from the pool
 static HashNode* allocate_hash_node() {
-    if (hash_node_pool_index >= HASH_TABLE_SIZE) {
+    if (hash_node_pool_index >= MAX_RECORDS) {
         fprintf(stderr, "Error: HashNode pool exhausted\n");
         return NULL;
     }
