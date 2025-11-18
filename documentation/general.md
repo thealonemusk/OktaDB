@@ -25,8 +25,7 @@ OktaDB/
 │   ├── hashtable.h
 │   ├── main.c          # Entry point of the application
 │   ├── utility.h       # Utility functions
-│   └── storage/
-│       ├── storage.c   # Storage-related logic
+│   
 ├── build.ps1           # Build script
 ├── README.md           # Project overview
 ├── documentation/      # Detailed documentation
