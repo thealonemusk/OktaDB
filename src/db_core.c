@@ -2,9 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <io.h>
 #include <stdint.h>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 static Database db_instance;
 static Record db_records[MAX_RECORDS];
@@ -90,10 +93,7 @@ void db_close(Database *db) {
         }
     }
 
-    // Free all memory
-    free(db->records);
-    free(db->filename);
-    free(db);
+    // Note: db uses static memory allocation, no need to free
 }
 
 
