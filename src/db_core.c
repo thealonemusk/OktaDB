@@ -1,29 +1,11 @@
-#include "storage.h"
+#include "db_core.h" // Include the header file for declarations
 #include <stdio.h>
-#include <stdlib.h>  // For memory allocation functions
-#include <string.h>  // For strdup
-#include <stdbool.h> // For bool type
-#include <unistd.h> // For ftruncate and fileno
-#include <io.h> // For _chsize and _fileno
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <io.h>
+#include <stdint.h>
 
-// Internal record structure
-typedef struct {
-    char key[MAX_KEY_LEN];
-    char value[MAX_VALUE_LEN];
-    bool deleted;  // true if deleted, false if active
-} Record;
-
-// Database structure (hidden from users)
-struct Database {
-    char filename[MAX_KEY_LEN];
-    Record *records;
-    size_t count;       // Number of records (including deleted)
-    size_t capacity;    // Maximum capacity
-    bool modified;      // true if database has unsaved changes
-    size_t tombstone_count;  // Number of deleted records
-};  
-
-// Replace dynamic allocation with static allocation
 static Database db_instance;
 static Record db_records[MAX_RECORDS];
 
@@ -43,6 +25,9 @@ Database* db_open(const char *filename) {
     db->tombstone_count = 0;
     db->records = db_records; // Use statically allocated records array
 
+    // Clear the hashtable
+    hash_table_clear();
+
     // Try to load existing database from disk
     FILE *f = fopen(filename, "rb");
     if (f) {
@@ -54,7 +39,9 @@ Database* db_open(const char *filename) {
                 Record temp;
                 if (fread(&temp, sizeof(Record), 1, f) == 1) {
                     if (!temp.deleted) { // Skip deleted records
-                        db->records[db->count++] = temp;
+                        db->records[db->count] = temp;
+                        hash_table_insert(temp.key, db->count); // Rebuild hashtable
+                        db->count++;
                     } else {
                         db->tombstone_count++;
                     }
@@ -110,25 +97,13 @@ void db_close(Database *db) {
 }
 
 
-// Internal helper: find a record by key
-// Returns index if found, -1 if not found
-static int find_record(Database *db, const char *key) {
-    for (size_t i = 0; i < db->count; i++) {
-        if (!db->records[i].deleted && 
-            strcmp(db->records[i].key, key) == 0) {
-            return (int)i;
-        }
-    }
-    return -1;
-}
-
-// Insert or update a key-value pair
+// Insert a new key-value pair
 int db_insert(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
         fprintf(stderr, "Error: Invalid arguments to db_insert\n");
         return STATUS_ERROR;
     }
-    
+
     // Check length limits
     if (strlen(key) >= MAX_KEY_LEN || strlen(value) >= MAX_VALUE_LEN) {
         fprintf(stderr, "Error: Key or value too long\n");
@@ -136,28 +111,28 @@ int db_insert(Database *db, const char *key, const char *value) {
     }
 
     // Check if key already exists
-    int idx = find_record(db, key);
-    
+    int idx = hash_table_find(key);
     if (idx >= 0) {
-        // Update existing record
-        strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
-        db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
-    } else {
-        // Insert new record
-        if (db->count >= db->capacity) {
-            fprintf(stderr, "Error: Database is full\n");
-            return STATUS_FULL;
-        }
-        
-        strncpy(db->records[db->count].key, key, MAX_KEY_LEN - 1);
-        db->records[db->count].key[MAX_KEY_LEN - 1] = '\0';
-        
-        strncpy(db->records[db->count].value, value, MAX_VALUE_LEN - 1);
-        db->records[db->count].value[MAX_VALUE_LEN - 1] = '\0';
-        
-        db->records[db->count].deleted = false;
-        db->count++;
+        fprintf(stderr, "Error: Key '%s' already exists\n", key);
+        return STATUS_EXISTS;
     }
+
+    // Insert new record
+    if (db->count >= db->capacity) {
+        fprintf(stderr, "Error: Database is full\n");
+        return STATUS_FULL;
+    }
+
+    strncpy(db->records[db->count].key, key, MAX_KEY_LEN - 1);
+    db->records[db->count].key[MAX_KEY_LEN - 1] = '\0';
+
+    strncpy(db->records[db->count].value, value, MAX_VALUE_LEN - 1);
+    db->records[db->count].value[MAX_VALUE_LEN - 1] = '\0';
+
+    db->records[db->count].deleted = false;
+    hash_table_insert(key, db->count); // Add to hashtable
+    printf("db_insert: Inserted key '%s' at index %zu with value '%s'.\n", key, db->count, value);
+    db->count++;
 
     db->modified = true;
     return STATUS_OK;
@@ -170,11 +145,11 @@ const char* db_get(Database *db, const char *key) {
         return NULL;
     }
 
-    int idx = find_record(db, key);
+    int idx = hash_table_find(key);
     if (idx < 0) {
+        printf("Key '%s' not found in db_get.\n", key);
         return NULL;
     }
-
     // Return a direct pointer to the value in the record
     return db->records[idx].value;
 }
@@ -186,13 +161,14 @@ int db_delete(Database *db, const char *key) {
         return STATUS_ERROR;
     }
 
-    int idx = find_record(db, key);
+    int idx = hash_table_find(key);
     if (idx < 0) {
         return STATUS_NOT_FOUND;
     }
 
     // Mark as deleted (tombstone)
     db->records[idx].deleted = true;
+    hash_table_delete(key); // Remove from hashtable
     db->tombstone_count++;
     db->modified = true;
 
@@ -233,21 +209,32 @@ void db_list(Database *db) {
     printf("Total: %d active record(s)\n", active_count);
 }
 
-// Update the value for an existing key
+// Update the value of an existing key
 int db_update(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
         fprintf(stderr, "Error: Invalid arguments to db_update\n");
         return STATUS_ERROR;
     }
-    int idx = find_record(db, key);
-    if (idx < 0 || db->records[idx].deleted) {
+
+    // Find the index of the key in the hash table
+    int idx = hash_table_find(key);
+    if (idx < 0) {
         fprintf(stderr, "Error: Key '%s' not found for update\n", key);
         return STATUS_NOT_FOUND;
     }
+
+    // Ensure the record is not marked as deleted
+    if (db->records[idx].deleted) {
+        fprintf(stderr, "Error: Key '%s' is marked as deleted\n", key);
+        return STATUS_NOT_FOUND;
+    }
+
+    // Update the value of the existing record
     strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
     db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
     db->modified = true;
-    printf("OK: Updated key '%s'\n", key);
+
+    printf("OK: Updated key '%s' with new value '%s'.\n", key, value);
     return STATUS_OK;
 }
 

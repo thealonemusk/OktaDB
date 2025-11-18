@@ -7,17 +7,19 @@ A simple key-value database implementation in C for learning database internals.
 ```
 oktadb/
 ├── src/
-│   ├── main.c              # Entry point and REPL
-│   ├── common/
-│   │   └── utility.h         # e definitions
-│   └── storage/
-│       ├── storage.h       # Storage engine interface
-│       └── storage.c       # Storage engine implementation
-├── build/                  # Build artifacts (generated)
-├── bin/                    # Compiled binaries (generated)
+│   ├── db_core.c          # Core database logic
+│   ├── db_core.h
+│   ├── hashtable.c        # Hash table implementation
+│   ├── hashtable.h
+│   ├── main.c             # Entry point and REPL
+│   ├── utility.h          # Utility functions
+├── build/                 # Build artifacts (generated)
+├── bin/                   # Compiled binaries (generated)
 ├── build.ps1              # PowerShell build script
-├── build.bat              # Batch build script
-└── README.md              # This file
+├── README.md              # This file
+├── documentation/         # Detailed documentation
+│   ├── compaction.md      # Details about compaction
+│   ├── general.md         # General documentation
 ```
 
 ## Building
@@ -89,7 +91,8 @@ make clean
 
 Commands available in the REPL:
 
-* `INSERT <key> <value>` - Insert or update a key-value pair
+* `INSERT <key> <value>` - Insert a new key-value pair
+* `UPDATE <key> <value>` - Update an existing key-value pair
 * `GET <key>` - Retrieve value by key
 * `DELETE <key>` - Delete a key-value pair
 * `LIST` - List all keys

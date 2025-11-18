@@ -10,7 +10,8 @@ typedef enum {
     STATUS_ERROR = -1,       // General error
     STATUS_NOT_FOUND = -2,   // Key not found
     STATUS_DUPLICATE = -3,   // Key already exists
-    STATUS_FULL = -4         // Database is full
+    STATUS_FULL = -4,         // Database is full
+    STATUS_EXISTS = 1         // Key exists
 } Status;
 
 // Centralized constants
