@@ -6,11 +6,6 @@
 #include <unistd.h> // For ftruncate and fileno
 #include <io.h> // For _chsize and _fileno
 
-// Constants
-#define MAX_RECORDS 1000
-#define MAX_KEY_LEN 128
-#define MAX_VALUE_LEN 256
-
 // Internal record structure
 typedef struct {
     char key[MAX_KEY_LEN];
@@ -28,6 +23,10 @@ struct Database {
     size_t tombstone_count;  // Number of deleted records
 };  
 
+// Replace dynamic allocation with static allocation
+static Database db_instance;
+static Record db_records[MAX_RECORDS];
+
 // Open or create a database
 Database* db_open(const char *filename) {
     if (!filename) {
@@ -35,36 +34,19 @@ Database* db_open(const char *filename) {
         return NULL;
     }
 
-    Database *db = malloc(sizeof(Database));
-    if (!db) {
-        fprintf(stderr, "Error: Memory allocation failed for Database in db_open\n");
-        return NULL;
-    }
-
-    db->filename = my_strdup(filename);
-    if (!db->filename) {
-        free(db);
-        return NULL;
-    }
-
+    Database *db = &db_instance; // Use statically allocated instance
+    db->filename = my_strdup(filename); 
     db->capacity = MAX_RECORDS;
     db->count = 0;
     db->modified = false;
     db->tombstone_count = 0;
-    
-    db->records = malloc(sizeof(Record) * db->capacity);
-    if (!db->records) {
-        fprintf(stderr, "Error: Memory allocation failed for records in db_open\n");
-        free(db->filename);
-        free(db);
-        return NULL;
-    }
+    db->records = db_records; // Use statically allocated records array
 
     // Try to load existing database from disk
     FILE *f = fopen(filename, "rb");
     if (f) {
         size_t read_count;
-        
+
         // Read the count
         if (fread(&read_count, sizeof(size_t), 1, f) == 1) {
             if (read_count <= db->capacity) {
@@ -245,39 +227,41 @@ void db_list(Database *db) {
     printf("Total: %d active record(s)\n", active_count);
 }
 
-// Add a new function to compact the database
+// Update the value for an existing key
+int db_update(Database *db, const char *key, const char *value) {
+    if (db_insert(db, key, value) == STATUS_OK) {
+        printf("OK: Updated key '%s'\n", key);
+        return STATUS_OK;
+    } else {
+        fprintf(stderr, "Error: Failed to update key '%s'\n", key);
+        return STATUS_ERROR;
+    }
+}
+
+// Modify db_compact to use a static temporary array
 void db_compact(Database *db) {
     if (!db) {
         fprintf(stderr, "Error: Invalid database instance in db_compact\n");
         return;
     }
 
-    // Allocate a new array for active records
-    Record *new_records = malloc(sizeof(Record) * db->capacity);
-    if (!new_records) {
-        fprintf(stderr, "Error: Memory allocation failed in db_compact\n");
-        return;
-    }
-
+    static Record temp_records[MAX_RECORDS]; // Use static temporary array
     size_t new_count = 0;
 
-    // Copy active records to the new array
+    // Copy active records to the temporary array
     for (size_t i = 0; i < db->count; i++) {
         if (!db->records[i].deleted) {
-            new_records[new_count++] = db->records[i];
+            temp_records[new_count++] = db->records[i];
         }
     }
 
-    // Replace the old array with the new one
-    free(db->records);
-    db->records = new_records;
+    // Copy back to the original records array
+    memcpy(db->records, temp_records, sizeof(Record) * new_count);
     db->count = new_count;
 
     // Reset tombstone count
     db->tombstone_count = 0;
 
-    // Mark the database as modified
     db->modified = true;
-
     printf("Compaction complete. %zu active records retained.\n", new_count);
 }

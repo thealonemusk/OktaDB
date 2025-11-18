@@ -1,5 +1,5 @@
-#ifndef CUSTOM_H
-#define CUSTOM_H
+#ifndef UTILITY_H
+#define UTILITY_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -13,6 +13,11 @@ typedef enum {
     STATUS_FULL = -4         // Database is full
 } Status;
 
+// Centralized constants
+#define MAX_RECORDS 1000
+#define MAX_KEY_LEN 128
+#define MAX_VALUE_LEN 256
+
 // Data types (for future use)
 typedef enum {
     TYPE_INT,
@@ -20,5 +25,6 @@ typedef enum {
     TYPE_FLOAT,
     TYPE_BOOL
 } DataType;
+
 char* my_strdup(const char* s);
-#endif // CUSTOM_H
+#endif // UTILITY_H

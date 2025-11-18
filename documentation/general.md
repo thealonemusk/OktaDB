@@ -20,8 +20,8 @@ OktaDB/
 ├── src/
 │   ├── main.c          # Entry point of the application
 │   ├── common/
-│   │   ├── custom.c    # Utility functions
-│   │   ├── custom.h
+│   │   ├── utility.c    # Utility functions
+│   │   ├── utility.h
 │   ├── storage/
 │       ├── storage.c   # Core database logic
 │       ├── storage.h
