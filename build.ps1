@@ -94,5 +94,3 @@ switch ($action.ToLower()) {
 }
 
 # Ensure the build script handles renamed files and updated structure
-
-# Ensure the build script handles renamed files and updated structure
