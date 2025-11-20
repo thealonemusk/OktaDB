@@ -6,8 +6,10 @@
 #include <errno.h>
 #ifdef _WIN32
 #include <io.h>
+#include <windows.h>
 #else
 #include <unistd.h>
+#include <limits.h>
 #endif
 
 static Database db_instance;
@@ -78,13 +80,30 @@ Database* db_open(const char *filename) {
 
 // Atomic file write helper - writes entire database atomically
 static int atomic_write_file(const char *filename, const Database *db) {
-    char temp_filename[512];
+    // Use platform-appropriate maximum path length
+#ifdef _WIN32
+    #define MAX_PATH_LEN MAX_PATH
+#else
+    #define MAX_PATH_LEN PATH_MAX
+#endif
+    
+    char temp_filename[MAX_PATH_LEN];
+    size_t filename_len = strlen(filename);
+    
+    // Ensure we have enough space for filename + ".tmp" + null terminator
+    if (filename_len + 5 > MAX_PATH_LEN) {
+        fprintf(stderr, "Error: Filename too long for temporary file\n");
+        return -1;
+    }
+    
     if (snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", filename) >= (int)sizeof(temp_filename)) {
+        fprintf(stderr, "Error: Failed to create temporary filename\n");
         return -1;
     }
     
     FILE *f = fopen(temp_filename, "wb");
     if (!f) {
+        fprintf(stderr, "Error: Failed to open temporary file: %s\n", strerror(errno));
         return -1;
     }
 
@@ -111,13 +130,25 @@ static int atomic_write_file(const char *filename, const Database *db) {
     }
 
     // Atomic rename (replace old file)
+    // On Windows, use MoveFileEx for atomic operation
+    // On Unix, rename() is atomic
 #ifdef _WIN32
-    remove(filename); // Windows doesn't have atomic rename
-#endif
-    if (rename(temp_filename, filename) != 0) {
+    // Use MoveFileEx with MOVEFILE_REPLACE_EXISTING for atomic operation
+    // This replaces the destination file atomically if it exists
+    if (MoveFileExA(temp_filename, filename, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
+        DWORD error = GetLastError();
         remove(temp_filename);
+        fprintf(stderr, "Error: Failed to atomically replace database file: Windows error %lu\n", error);
         return -1;
     }
+#else
+    // On Unix/Linux, rename() is atomic
+    if (rename(temp_filename, filename) != 0) {
+        remove(temp_filename);
+        fprintf(stderr, "Error: Failed to rename temporary file: %s\n", strerror(errno));
+        return -1;
+    }
+#endif
 
     return 0;
 }
@@ -309,22 +340,37 @@ void db_compact(Database *db) {
     Record temp_records[MAX_RECORDS]; // Use local temporary array
     size_t new_count = 0;
 
-    // Clear hashtable before rebuilding
-    hash_table_clear();
+    // Save original state for rollback if needed
+    size_t original_count = db->count;
+    Record original_records[MAX_RECORDS];
+    memcpy(original_records, db->records, sizeof(Record) * original_count);
 
-    // Copy active records to the temporary array and rebuild hashtable
+    // Copy active records to the temporary array (don't rebuild hashtable yet)
     for (size_t i = 0; i < db->count; i++) {
         if (!db->records[i].deleted) {
+            if (new_count >= MAX_RECORDS) {
+                // Rollback on error
+                fprintf(stderr, "Error: Compaction would exceed maximum records, rolling back\n");
+                memcpy(db->records, original_records, sizeof(Record) * original_count);
+                db->count = original_count;
+                return;
+            }
             temp_records[new_count] = db->records[i];
-            // Rebuild hashtable with new indices
-            hash_table_insert(temp_records[new_count].key, new_count);
             new_count++;
         }
     }
 
-    // Copy back to the original records array
+    // Only now, after successful copy, clear and rebuild hashtable
+    hash_table_clear();
+    
+    // Copy back to the original records array and rebuild hashtable
     memcpy(db->records, temp_records, sizeof(Record) * new_count);
     db->count = new_count;
+
+    // Rebuild hashtable with new indices
+    for (size_t i = 0; i < new_count; i++) {
+        hash_table_insert(db->records[i].key, i);
+    }
 
     // Reset tombstone count
     db->tombstone_count = 0;

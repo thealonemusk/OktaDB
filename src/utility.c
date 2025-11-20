@@ -28,13 +28,19 @@ int oktadb_strncasecmp(const char *s1, const char *s2, size_t n) {
         return s1 ? 1 : -1;
     }
     
-    while (n-- && *s1 && *s2) {
+    // Compare up to n characters
+    while (n > 0 && *s1 && *s2) {
         int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
         if (diff != 0) return diff;
         s1++;
         s2++;
+        n--;
     }
-    if (n == (size_t)-1) return 0;
+    
+    // If we exhausted all n characters without finding a difference, strings match
+    if (n == 0) return 0;
+    
+    // Otherwise, one string ended before n characters - compare remaining
     return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
 }
 #else
