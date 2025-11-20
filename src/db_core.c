@@ -1,8 +1,9 @@
-#include "db_core.h" // Include the header file for declarations
+#include "db_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -38,58 +39,105 @@ Database* db_open(const char *filename) {
 
         // Read the count
         if (fread(&read_count, sizeof(size_t), 1, f) == 1) {
+            // Validate count to prevent buffer overflow
+            if (read_count > MAX_RECORDS) {
+                fprintf(stderr, "Error: Database file corrupted (record count exceeds maximum)\n");
+                fclose(f);
+                return NULL;
+            }
+
             for (size_t i = 0; i < read_count; i++) {
                 Record temp;
                 if (fread(&temp, sizeof(Record), 1, f) == 1) {
                     if (!temp.deleted) { // Skip deleted records
+                        if (db->count >= db->capacity) {
+                            fprintf(stderr, "Error: Database capacity exceeded while loading\n");
+                            fclose(f);
+                            return NULL;
+                        }
                         db->records[db->count] = temp;
                         hash_table_insert(temp.key, db->count); // Rebuild hashtable
                         db->count++;
                     } else {
                         db->tombstone_count++;
                     }
+                } else {
+                    fprintf(stderr, "Warning: Failed to read record %zu from database file\n", i);
+                    break;
                 }
             }
-            printf("Loaded %zu records from disk\n", db->count);
+        } else {
+            // Empty or corrupted file - treat as new database
+            fprintf(stderr, "Warning: Could not read record count from database file, treating as new database\n");
         }
         fclose(f);
-    } else {
-        printf("Created new database\n");
     }
 
     return db;
+}
+
+// Atomic file write helper - writes entire database atomically
+static int atomic_write_file(const char *filename, const Database *db) {
+    char temp_filename[512];
+    if (snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", filename) >= (int)sizeof(temp_filename)) {
+        return -1;
+    }
+    
+    FILE *f = fopen(temp_filename, "wb");
+    if (!f) {
+        return -1;
+    }
+
+    // Write count
+    if (fwrite(&db->count, sizeof(size_t), 1, f) != 1) {
+        fclose(f);
+        remove(temp_filename);
+        return -1;
+    }
+
+    // Write records
+    if (db->count > 0) {
+        size_t written = fwrite(db->records, sizeof(Record), db->count, f);
+        if (written != db->count) {
+            fclose(f);
+            remove(temp_filename);
+            return -1;
+        }
+    }
+
+    if (fflush(f) != 0 || fclose(f) != 0) {
+        remove(temp_filename);
+        return -1;
+    }
+
+    // Atomic rename (replace old file)
+#ifdef _WIN32
+    remove(filename); // Windows doesn't have atomic rename
+#endif
+    if (rename(temp_filename, filename) != 0) {
+        remove(temp_filename);
+        return -1;
+    }
+
+    return 0;
 }
 
 // Close database and save to disk
 void db_close(Database *db) {
     if (!db) return;
 
-    // Compact BEFORE saving (never after free!)
-    if (db->modified) {
+    // Compact BEFORE saving
+    if (db->modified && db->tombstone_count > 0) {
         db_compact(db);
     }
 
     // Save if modified
     if (db->modified) {
-        FILE *f = fopen(db->filename, "wb");
-        if (!f) {
-            fprintf(stderr, "Warning: Could not save database to %s\n", db->filename);
-        } else {
-            // Write count
-            if (fwrite(&db->count, sizeof(size_t), 1, f) != 1) {
-                fprintf(stderr, "Error: Failed to write record count.\n");
-            }
-
-            // Write records
-            if (db->count > 0) {
-                size_t written = fwrite(db->records, sizeof(Record), db->count, f);
-                if (written != db->count) {
-                    fprintf(stderr, "Error: Failed to write all records.\n");
-                }
-            }
-
-            fclose(f);
-            printf("Saved %zu records to disk\n", db->count);
+        // Use atomic write to prevent corruption
+        if (atomic_write_file(db->filename, db) != 0) {
+            fprintf(stderr, "Error: Failed to save database to %s: %s\n", 
+                    db->filename, strerror(errno));
+            return;
         }
     }
 
@@ -131,7 +179,6 @@ int db_insert(Database *db, const char *key, const char *value) {
 
     db->records[db->count].deleted = false;
     hash_table_insert(key, db->count); // Add to hashtable
-    printf("db_insert: Inserted key '%s' at index %zu with value '%s'.\n", key, db->count, value);
     db->count++;
 
     db->modified = true;
@@ -146,10 +193,15 @@ const char* db_get(Database *db, const char *key) {
     }
 
     int idx = hash_table_find(key);
-    if (idx < 0) {
-        printf("Key '%s' not found in db_get.\n", key);
+    if (idx < 0 || idx >= (int)db->count) {
         return NULL;
     }
+
+    // Verify the record is not deleted
+    if (db->records[idx].deleted) {
+        return NULL;
+    }
+
     // Return a direct pointer to the value in the record
     return db->records[idx].value;
 }
@@ -174,8 +226,7 @@ int db_delete(Database *db, const char *key) {
 
     // Trigger automatic compaction if tombstones exceed threshold
     size_t tombstone_threshold = db->capacity / 5;  // 20% of capacity
-    if (db->tombstone_count > tombstone_threshold) {
-        printf("Tombstone threshold exceeded. Triggering compaction...\n");
+    if (db->tombstone_count > tombstone_threshold && db->tombstone_count > 0) {
         db_compact(db);
     }
 
@@ -229,31 +280,45 @@ int db_update(Database *db, const char *key, const char *value) {
         return STATUS_NOT_FOUND;
     }
 
+    // Check value length
+    if (strlen(value) >= MAX_VALUE_LEN) {
+        fprintf(stderr, "Error: Value too long (max %d characters)\n", MAX_VALUE_LEN - 1);
+        return STATUS_ERROR;
+    }
+
     // Update the value of the existing record
     strncpy(db->records[idx].value, value, MAX_VALUE_LEN - 1);
     db->records[idx].value[MAX_VALUE_LEN - 1] = '\0';
     db->modified = true;
 
-    printf("OK: Updated key '%s' with new value '%s'.\n", key, value);
     return STATUS_OK;
 }
 
-// Enhance db_compact to ensure proper handling of tombstone data
+// Compact database by removing deleted records and rebuilding hashtable
 void db_compact(Database *db) {
     if (!db) {
         fprintf(stderr, "Error: Invalid database instance in db_compact\n");
         return;
     }
 
+    if (db->tombstone_count == 0) {
+        // Nothing to compact
+        return;
+    }
+
     Record temp_records[MAX_RECORDS]; // Use local temporary array
     size_t new_count = 0;
 
-    // Copy active records to the temporary array
+    // Clear hashtable before rebuilding
+    hash_table_clear();
+
+    // Copy active records to the temporary array and rebuild hashtable
     for (size_t i = 0; i < db->count; i++) {
         if (!db->records[i].deleted) {
-            temp_records[new_count++] = db->records[i];
-        } else {
-            printf("Skipping tombstone record: %s\n", db->records[i].key);
+            temp_records[new_count] = db->records[i];
+            // Rebuild hashtable with new indices
+            hash_table_insert(temp_records[new_count].key, new_count);
+            new_count++;
         }
     }
 
@@ -265,24 +330,4 @@ void db_compact(Database *db) {
     db->tombstone_count = 0;
 
     db->modified = true;
-    printf("Compaction complete. %zu active records retained.\n", new_count);
-
-    // Save the database to persist changes
-    FILE *f = fopen(db->filename, "wb");
-    if (!f) {
-        fprintf(stderr, "Warning: Could not save database to %s after compaction\n", db->filename);
-        return;
-    }
-
-    // Write count and records
-    fwrite(&db->count, sizeof(size_t), 1, f);
-    fwrite(db->records, sizeof(Record), db->count, f);
-    fclose(f);
-    printf("Database saved after compaction.\n");
-
-    // Debug: Verify in-memory database state
-    printf("In-memory database state after compaction:\n");
-    for (size_t i = 0; i < db->count; i++) {
-        printf("  %s -> %s\n", db->records[i].key, db->records[i].value);
-    }
 }

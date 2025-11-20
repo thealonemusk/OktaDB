@@ -50,7 +50,8 @@ int db_insert(Database *db, const char *key, const char *value);
  * Get value by key
  * @param db Database instance
  * @param key Key to search for
- * @return Dynamically allocated value string (caller must free), or NULL if not found
+ * @return Direct pointer to value string in database record, or NULL if not found
+ * @note The returned pointer is valid until the database is closed or the record is deleted/updated
  */
 const char* db_get(Database *db, const char *key);
 

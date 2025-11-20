@@ -16,7 +16,7 @@ $LDFLAGS = if ($IsWindows) { "-mconsole" } else { "" }
 $SRC_DIR = "src"
 $BUILD_DIR = "build"
 $BIN_DIR = "bin"
-$TARGET = "$BIN_DIR/mydb.exe"
+$TARGET = "$BIN_DIR/oktadb.exe"
 
 function Create-Directories {
     New-Item -ItemType Directory -Force -Path "$BUILD_DIR/storage" | Out-Null
@@ -24,7 +24,7 @@ function Create-Directories {
 }
 
 function Build-Project {
-    Write-Host "Building MyDB..." -ForegroundColor Green
+    Write-Host "Building OktaDB..." -ForegroundColor Green
 
     Create-Directories
 
@@ -75,7 +75,7 @@ function Run-Project {
         Write-Host "Building first..." -ForegroundColor Yellow
         Build-Project
     }
-    Write-Host "Running MyDB..." -ForegroundColor Green
+    Write-Host "Running OktaDB..." -ForegroundColor Green
     & $TARGET "test.db"
 }
 
