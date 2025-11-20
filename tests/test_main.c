@@ -3,17 +3,26 @@
 
 int tests_run = 0;
 
-// Forward declaration of test suites
-extern const char *all_tests();
+// Forward declarations of test suites
+extern const char *all_utility_tests();
+extern const char *all_db_tests();
 
 int main(int argc, char **argv) {
-    const char *result = all_tests();
-    if (result != 0) {
-        printf("FAILED: %s\n", result);
-    } else {
+    const char *result_utility = all_utility_tests();
+    const char *result_db = all_db_tests();
+    int failed = 0;
+    if (result_utility != 0) {
+        printf("UTILITY TESTS FAILED: %s\n", result_utility);
+        failed = 1;
+    }
+    if (result_db != 0) {
+        printf("DB TESTS FAILED: %s\n", result_db);
+        failed = 1;
+    }
+    if (!failed) {
         printf("ALL TESTS PASSED\n");
     }
     printf("Tests run: %d\n", tests_run);
 
-    return result != 0;
+    return failed;
 }
