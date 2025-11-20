@@ -3,7 +3,8 @@
 
 #include <stdio.h>
 
-// Simple assertion macro
+// Simple assertion macro - returns message string if test fails, otherwise continues
+// Example: mu_assert("expected value to be 5", value == 5);
 #define mu_assert(message, test) do { if (!(test)) return message; } while (0)
 
 // Macro to run a test function
