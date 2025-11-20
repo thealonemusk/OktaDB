@@ -19,6 +19,7 @@ oktadb/
 ├── README.md              # This file
 ├── documentation/         # Detailed documentation
 │   ├── compaction.md      # Details about compaction
+│   ├── testing.md         # Testing guide
 │   ├── general.md         # General documentation
 ```
 
@@ -38,6 +39,9 @@ oktadb/
 
 # Rebuild from scratch
 .\build.ps1 rebuild
+
+# Run unit tests
+.\build.ps1 test
 ```
 
 ### Windows (Command Prompt)
@@ -162,7 +166,7 @@ Database closed. Goodbye!
 * [X] Hash table indexing for O(1) lookups
 * [ ] Improved serialization format
 * [X] Better error handling
-* [ ] Unit tests
+* [X] Unit tests
 
 ### Phase 3
 
