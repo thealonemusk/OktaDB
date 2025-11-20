@@ -127,18 +127,25 @@ Database closed. Goodbye!
 * Simple key-value storage
 * Persistent storage to disk
 * Basic CRUD operations (Create, Read, Update, Delete)
-* In-memory indexing (linear search)
+* Hash table indexing for O(1) lookups
+* Automatic compaction of deleted records
+* Atomic file writes for data integrity
 * Data persists between sessions
 * Maximum 1000 records
 * Keys up to 127 characters
 * Values up to 255 characters
 
-## Updated Features
+## Production-Ready Features
 
 * Removed all dynamic memory allocations (`malloc`) for improved stability.
-* `db_get` now returns direct pointers to database records, avoiding unnecessary string duplication.
+* `db_get` returns direct pointers to database records, avoiding unnecessary string duplication.
 * Improved memory management to eliminate potential leaks.
-* Added compaction functionality to remove deleted records and reclaim space.
+* Compaction functionality to remove deleted records and reclaim space.
+* Hash table indexing for O(1) key lookups.
+* Atomic file writes to prevent database corruption.
+* Comprehensive error handling and validation.
+* Portable code (Windows, Linux, macOS).
+* Security improvements (removed system() calls, input validation).
 
 ## Roadmap
 
@@ -152,9 +159,9 @@ Database closed. Goodbye!
 ### Phase 2 (Next)
 
 * [X] Compaction (remove deleted records)
-* [ ] Hash table indexing for O(1) lookups
+* [X] Hash table indexing for O(1) lookups
 * [ ] Improved serialization format
-* [ ] Better error handling
+* [X] Better error handling
 * [ ] Unit tests
 
 ### Phase 3
@@ -210,11 +217,15 @@ Currently using a simple binary format:
    * Value (256 bytes)
    * Deleted flag (4 bytes)
 
-### Improvements
+### Production Improvements
 
 * Removed dynamic memory allocations for `Database` and `Record` structures.
 * Static memory allocation ensures predictable memory usage.
 * Compaction reclaims space by removing tombstones (deleted records).
+* Atomic file writes prevent corruption during crashes.
+* Hash table provides O(1) lookup performance.
+* Comprehensive input validation and error handling.
+* Portable implementation across Windows, Linux, and macOS.
 
 ## Contributing
 

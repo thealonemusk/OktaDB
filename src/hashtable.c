@@ -1,17 +1,21 @@
 #include "hashtable.h"
 #include <string.h>
-#include <stdint.h> // For uint32_t
-#include <stdio.h>  // For debugging
+#include <stdint.h>
+#include <stdio.h>
 
 static HashNode hash_table[HASH_TABLE_SIZE];
 static HashNode hash_node_pool[MAX_RECORDS]; // Static memory pool sized to database capacity
 static size_t hash_node_pool_index = 0;
 
-// Hash function
+// Hash function (djb2-like algorithm)
 static uint32_t hash_function(const char *key) {
-    uint32_t hash = 0;
-    while (*key) {
-        hash = (hash * 31) + (unsigned char)(*key++);
+    if (!key || !*key) {
+        return 0;
+    }
+    uint32_t hash = 5381;
+    int c;
+    while ((c = (unsigned char)*key++)) {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
     }
     return hash % HASH_TABLE_SIZE;
 }
@@ -27,6 +31,10 @@ static HashNode* allocate_hash_node() {
 
 // Insert into hashtable
 void hash_table_insert(const char *key, size_t index) {
+    if (!key) {
+        return;
+    }
+    
     uint32_t hash = hash_function(key);
     HashNode *new_node = allocate_hash_node();
     if (!new_node) {
@@ -41,11 +49,15 @@ void hash_table_insert(const char *key, size_t index) {
 
 // Find in hashtable
 int hash_table_find(const char *key) {
+    if (!key) {
+        return -1;
+    }
+    
     uint32_t hash = hash_function(key);
     HashNode *node = hash_table[hash].next;
     while (node) {
         if (strcmp(node->key, key) == 0) {
-            return node->index;
+            return (int)node->index;
         }
         node = node->next;
     }
@@ -54,6 +66,10 @@ int hash_table_find(const char *key) {
 
 // Delete from hashtable
 void hash_table_delete(const char *key) {
+    if (!key) {
+        return;
+    }
+    
     uint32_t hash = hash_function(key);
     HashNode *node = hash_table[hash].next;
     HashNode *prev = &hash_table[hash];

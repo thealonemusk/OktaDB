@@ -1,23 +1,7 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include "db_core.h"
 #include "utility.h"
-
-// Function to print help documentation
-void print_help() {
-    printf("OktaDB - A learning database implementation\n");
-    printf("Usage:\n");
-    printf("  INSERT/ADD <key> <value>  - Insert a key-value pair\n");
-    printf("  GET/FETCH <key>           - Retrieve value by key\n");
-    printf("  DELETE <key>              - Delete a key-value pair\n");
-    printf("  UPDATE <key> <value>      - Update a key-value pair\n");
-    printf("  LIST                      - List all keys\n");
-    printf("  HELP                      - Show this help\n");
-    printf("  CLS                       - Clear the screen\n");
-    printf("  EXIT/QUIT/CLOSE           - Exit the program\n");
-}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -37,9 +21,10 @@ int main(int argc, char *argv[]) {
     printf("Database opened: %s\n", db_file);
     printf("Type 'HELP' for available commands\n\n");
 
-    char command[256];
-    char key[128];
-    char value[256];
+    // Buffer sizes match MAX_VALUE_LEN for command, MAX_KEY_LEN for key/value
+    char command[MAX_VALUE_LEN];
+    char key[MAX_KEY_LEN];
+    char value[MAX_VALUE_LEN];
 
     while (1) {
         printf("oktadb> ");
@@ -58,22 +43,28 @@ int main(int argc, char *argv[]) {
         }
 
         // EXIT command
-        if (strcasecmp(command, "EXIT") == 0 || strcasecmp(command, "QUIT") == 0 || strcasecmp(command, "CLOSE") == 0) {
+        if (oktadb_strcasecmp(command, "EXIT") == 0 || oktadb_strcasecmp(command, "QUIT") == 0 || oktadb_strcasecmp(command, "CLOSE") == 0) {
             break;
         }
 
         // HELP command
-        if (strcasecmp(command, "HELP") == 0) {
+        if (oktadb_strcasecmp(command, "HELP") == 0) {
             print_help();
             continue;
         }
 
         // INSERT command
-        if (strncasecmp(command, "INSERT ", 7) == 0 || strncasecmp(command, "ADD ", 4) == 0) {
-            const char *cmd_ptr = (strncasecmp(command, "INSERT ", 7) == 0) ? command + 7 : command + 4;
+        if (oktadb_strncasecmp(command, "INSERT ", 7) == 0 || oktadb_strncasecmp(command, "ADD ", 4) == 0) {
+            const char *cmd_ptr = (oktadb_strncasecmp(command, "INSERT ", 7) == 0) ? command + 7 : command + 4;
+            // Use format specifiers that match buffer sizes
             if (sscanf(cmd_ptr, "%127s %255s", key, value) == 2) {
-                if (db_insert(db, key, value) == STATUS_OK) {
+                int status = db_insert(db, key, value);
+                if (status == STATUS_OK) {
                     printf("OK: Inserted key '%s'\n", key);
+                } else if (status == STATUS_EXISTS) {
+                    fprintf(stderr, "Error: Key '%s' already exists\n", key);
+                } else if (status == STATUS_FULL) {
+                    fprintf(stderr, "Error: Database is full\n");
                 } else {
                     fprintf(stderr, "Error: Failed to insert key '%s'\n", key);
                 }
@@ -84,8 +75,8 @@ int main(int argc, char *argv[]) {
         }
 
         // GET command
-        if (strncasecmp(command, "GET ", 4) == 0 || strncasecmp(command, "FETCH ", 6) == 0) {
-            const char *cmd_ptr = (strncasecmp(command, "GET ", 4) == 0) ? command + 4 : command + 6;
+        if (oktadb_strncasecmp(command, "GET ", 4) == 0 || oktadb_strncasecmp(command, "FETCH ", 6) == 0) {
+            const char *cmd_ptr = (oktadb_strncasecmp(command, "GET ", 4) == 0) ? command + 4 : command + 6;
             if (sscanf(cmd_ptr, "%127s", key) == 1) {
                 const char *result = db_get(db, key);
                 if (result) {
@@ -100,13 +91,16 @@ int main(int argc, char *argv[]) {
         }
 
         // DELETE command
-        if (strncasecmp(command, "DELETE ", 7) == 0  || strncasecmp(command, "DEL ", 4) == 0) {
-            const char *cmd_ptr = (strncasecmp(command, "DELETE ", 7) == 0) ? command + 7 : command + 4;
+        if (oktadb_strncasecmp(command, "DELETE ", 7) == 0  || oktadb_strncasecmp(command, "DEL ", 4) == 0) {
+            const char *cmd_ptr = (oktadb_strncasecmp(command, "DELETE ", 7) == 0) ? command + 7 : command + 4;
             if (sscanf(cmd_ptr, "%127s", key) == 1) {
-                if (db_delete(db, key) == STATUS_OK) {
+                int status = db_delete(db, key);
+                if (status == STATUS_OK) {
                     printf("OK: Deleted key '%s'\n", key);
-                } else {
+                } else if (status == STATUS_NOT_FOUND) {
                     fprintf(stderr, "Error: Key not found '%s'\n", key);
+                } else {
+                    fprintf(stderr, "Error: Failed to delete key '%s'\n", key);
                 }
             } else {
                 fprintf(stderr, "Error: Invalid syntax. Use: DELETE <key>\n");
@@ -115,18 +109,21 @@ int main(int argc, char *argv[]) {
         }
 
         // LIST command
-        if (strcasecmp(command, "LIST") == 0 || strcasecmp(command, "LS") == 0) {
+        if (oktadb_strcasecmp(command, "LIST") == 0 || oktadb_strcasecmp(command, "LS") == 0) {
             db_list(db);
             continue;
         }
 
         // UPDATE command
-        if (strncasecmp(command, "UPDATE ", 7) == 0) {
+        if (oktadb_strncasecmp(command, "UPDATE ", 7) == 0) {
             if (sscanf(command + 7, "%127s %255s", key, value) == 2) {
-                if (db_update(db, key, value) == STATUS_OK) {
+                int status = db_update(db, key, value);
+                if (status == STATUS_OK) {
                     printf("OK: Updated key '%s'\n", key);
+                } else if (status == STATUS_NOT_FOUND) {
+                    fprintf(stderr, "Error: Key '%s' not found\n", key);
                 } else {
-                    fprintf(stderr, "Error: Failed to update key '%s'. Key not found or invalid.\n", key);
+                    fprintf(stderr, "Error: Failed to update key '%s'\n", key);
                 }
             } else {
                 fprintf(stderr, "Error: Invalid syntax. Use: UPDATE <key> <value>\n");
@@ -134,13 +131,9 @@ int main(int argc, char *argv[]) {
             continue;
         }
         
-        // CLS command
-        if (strcasecmp(command, "CLS") == 0) {
-#ifdef _WIN32
-            system("cls");
-#else
-            system("clear");
-#endif
+        // CLS command - use ANSI escape codes instead of system() for security
+        if (oktadb_strcasecmp(command, "CLS") == 0 || oktadb_strcasecmp(command, "CLEAR") == 0) {
+            printf("\033[2J\033[H"); // ANSI escape code to clear screen
             continue;
         }
         fprintf(stderr, "Unknown command: %s\n", command);
