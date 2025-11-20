@@ -13,7 +13,7 @@ You can run the unit tests using the build script (Windows) or Make (Linux/Mac).
 ```
 
 This command will:
-1.  Compile the test runner (`test_runner.exe`).
+1.  Compile the test runner executable (`test_runner.exe` on Windows, `test_runner` on Linux/macOS).
 2.  Run the tests.
 3.  Display the output in the console.
 4.  Save the output to a timestamped log file in `tests/log/`.
