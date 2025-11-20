@@ -16,7 +16,7 @@ TARGET = $(BIN_DIR)/oktadb
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
 OBJECTS = $(SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
-.PHONY: all clean debug release run rebuild
+.PHONY: all clean debug release run rebuild test
 
 all: release
 
@@ -43,7 +43,7 @@ $(BIN_DIR):
 
 clean:
 	@echo "Cleaning build files..."
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) test_runner test_runner.exe
 	@echo "Clean complete"
 
 rebuild: clean release
@@ -51,6 +51,10 @@ rebuild: clean release
 run: $(TARGET)
 	@echo "Running OktaDB..."
 	./$(TARGET) test.db
+
+test:
+	gcc -o test_runner tests/test_main.c tests/test_utility.c src/utility.c -I src
+	./test_runner
 
 install: release
 	@echo "Installing OktaDB..."
@@ -62,4 +66,3 @@ uninstall:
 	@echo "Uninstalling OktaDB..."
 	@rm -f /usr/local/bin/oktadb
 	@echo "Uninstallation complete"
-
