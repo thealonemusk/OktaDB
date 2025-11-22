@@ -77,11 +77,6 @@ static const char *test_db_delete() {
     db_insert(db, "key1", "value1");
     mu_assert("error, delete failed", db_delete(db, "key1") == STATUS_OK);
     mu_assert("error, key should be gone", db_get(db, "key1") == NULL);
-    
-    // Count might still be 1 if we count tombstones, but let's check implementation details if needed.
-    // Based on db_core.h, count includes deleted, so it might be 1.
-    // But let's just check that we can't get it.
-    
     mu_assert("error, delete non-existent should fail", db_delete(db, "key2") == STATUS_NOT_FOUND);
     
     clean_test_db();
