@@ -18,7 +18,7 @@ static const char *test_strncasecmp() {
     return 0;
 }
 
-const char *all_tests() {
+const char *all_utility_tests() {
     mu_run_test(test_strcasecmp);
     mu_run_test(test_strncasecmp);
     return 0;
