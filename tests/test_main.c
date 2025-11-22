@@ -8,6 +8,8 @@ extern const char *all_utility_tests();
 extern const char *all_db_tests();
 
 int main(int argc, char **argv) {
+    (void)argc;
+    (void)argv;
     const char *result_utility = all_utility_tests();
     const char *result_db = all_db_tests();
     int failed = 0;
