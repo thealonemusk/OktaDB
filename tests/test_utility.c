@@ -19,7 +19,9 @@ static const char *test_strncasecmp() {
 }
 
 const char *all_utility_tests() {
+    printf("\n=== Running Utility Tests ===\n");
     mu_run_test(test_strcasecmp);
     mu_run_test(test_strncasecmp);
+    printf("=== Utility Tests Complete ===\n\n");
     return 0;
 }
