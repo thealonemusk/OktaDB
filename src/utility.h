@@ -43,5 +43,6 @@ int oktadb_strncasecmp(const char *s1, const char *s2, size_t n);
 
 // Utility function declarations
 void print_help(void);
+void clear_screen(void);
 
 #endif // UTILITY_H

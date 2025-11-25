@@ -3,6 +3,10 @@
 #include <string.h>
 #include <ctype.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 // Portable case-insensitive string comparison functions
 #ifdef _WIN32
 // Windows: Provide our own implementations to avoid conflicts with MinGW
@@ -58,7 +62,36 @@ void print_help(void) {
     printf("  UPDATE <key> <value>      - Update a key-value pair\n");
     printf("  LIST                      - List all keys\n");
     printf("  HELP                      - Show this help\n");
-    printf("  CLS                       - Clear the screen\n");
+    printf("  CLS/CLEAR                 - Clear the screen\n");
     printf("  EXIT/QUIT/CLOSE           - Exit the program\n");
 }
 
+// Function to clear the screen in a cross-platform way
+void clear_screen(void) {
+#ifdef _WIN32
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD count;
+    DWORD cellCount;
+    COORD homeCoords = { 0, 0 };
+
+    if (hConsole == INVALID_HANDLE_VALUE) return;
+
+    // Get the number of cells in the current buffer
+    if (!GetConsoleScreenBufferInfo(hConsole, &csbi)) return;
+    cellCount = csbi.dwSize.X * csbi.dwSize.Y;
+
+    // Fill the entire buffer with spaces
+    if (!FillConsoleOutputCharacter(hConsole, (TCHAR)' ', cellCount, homeCoords, &count)) return;
+
+    // Fill the entire buffer with the current colors and attributes
+    if (!FillConsoleOutputAttribute(hConsole, csbi.wAttributes, cellCount, homeCoords, &count)) return;
+
+    // Move the cursor home
+    SetConsoleCursorPosition(hConsole, homeCoords);
+#else
+    // Unix/Linux/Mac - use ANSI escape codes
+    printf("\033[2J\033[H");
+    fflush(stdout);
+#endif
+}

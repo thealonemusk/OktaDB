@@ -131,11 +131,12 @@ int main(int argc, char *argv[]) {
             continue;
         }
         
-        // CLS command - use ANSI escape codes instead of system() for security
+        // CLS command - cross-platform screen clearing
         if (oktadb_strcasecmp(command, "CLS") == 0 || oktadb_strcasecmp(command, "CLEAR") == 0) {
-            printf("\033[2J\033[H"); // ANSI escape code to clear screen
+            clear_screen();
             continue;
         }
+        
         fprintf(stderr, "Unknown command: %s\n", command);
         fprintf(stderr, "Type 'HELP' for available commands\n");
     }
