@@ -3,6 +3,7 @@ build/
 *.o
 *.exe
 *.db
+*.wal
 # Ignore binaries
 bin/
 
