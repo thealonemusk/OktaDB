@@ -1,25 +1,16 @@
 #ifndef DB_CORE_H
 #define DB_CORE_H
-#include <stddef.h>
-#include <stdbool.h>
-#include "hashtable.h" // Include hashtable operations
-#include "utility.h" // Include constants like MAX_KEY_LEN
 
-// Internal record structure
-typedef struct {
-    char key[MAX_KEY_LEN];
-    char value[MAX_VALUE_LEN];
-    bool deleted;  // true if deleted, false if active
-} Record;
+#include "pager.h"
+#include "btree.h"
+#include "wal.h"
+#include "utility.h" // For MAX_KEY_LEN
 
 // Database structure
 typedef struct Database {
     char filename[MAX_KEY_LEN];
-    Record *records;
-    size_t count;       // Number of records (including deleted)
-    size_t capacity;    // Maximum capacity
-    bool modified;      // true if database has unsaved changes
-    size_t tombstone_count;  // Number of deleted records
+    Pager* pager;
+    WAL* wal;
 } Database;
 
 // Function declarations
@@ -74,11 +65,5 @@ void db_list(Database *db);
  * @param db Database instance
  */
 int db_update(Database *db, const char *key, const char *value);
-
-/**
- * Compact the database by removing deleted records
- * @param db Database instance
- */
-void db_compact(Database *db);
 
 #endif // DB_CORE_H
