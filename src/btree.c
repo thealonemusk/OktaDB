@@ -330,17 +330,41 @@ void cursor_advance(Cursor* cursor) {
 
 void print_tree(Pager* pager, uint32_t page_num, uint32_t indentation_level) {
     void* node = pager_get_page(pager, page_num);
-    uint32_t num_cells = *leaf_node_num_cells(node);
-    
-    for (uint32_t i = 0; i < indentation_level; i++) {
-        printf("  ");
-    }
-    printf("- leaf (size %d)\n", num_cells);
-    
-    for (uint32_t i = 0; i < num_cells; i++) {
-        for (uint32_t j = 0; j < indentation_level + 1; j++) {
-            printf("  ");
+    NodeType type = get_node_type(node);
+    uint32_t i, j;
+    switch (type) {
+        case NODE_LEAF: {
+            uint32_t num_cells = *leaf_node_num_cells(node);
+            for (i = 0; i < indentation_level; i++) {
+                printf("  ");
+            }
+            printf("- leaf (size %d)\n", num_cells);
+            for (i = 0; i < num_cells; i++) {
+                for (j = 0; j < indentation_level + 1; j++) {
+                    printf("  ");
+                }
+                printf("%s\n", leaf_node_key(node, i));
+            }
+            break;
         }
-        printf("%s\n", leaf_node_key(node, i));
+        case NODE_INTERNAL: {
+            uint32_t num_keys = *internal_node_num_keys(node);
+            for (i = 0; i < indentation_level; i++) {
+                printf("  ");
+            }
+            printf("- internal (size %d)\n", num_keys);
+            for (i = 0; i < num_keys; i++) {
+                uint32_t child_page_num = *internal_node_child(node, i);
+                print_tree(pager, child_page_num, indentation_level + 1);
+                for (j = 0; j < indentation_level + 1; j++) {
+                    printf("  ");
+                }
+                printf("%s\n", internal_node_key(node, i));
+            }
+            // Print rightmost child
+            uint32_t right_child_page_num = *internal_node_right_child(node);
+            print_tree(pager, right_child_page_num, indentation_level + 1);
+            break;
+        }
     }
 }
