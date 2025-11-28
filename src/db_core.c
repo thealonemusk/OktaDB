@@ -116,7 +116,6 @@ const char* db_get(Database *db, const char *key) {
 }
 // Delete a key-value pair
 // TODO: Not yet implemented for B-tree storage
-// Delete a key-value pair
 int db_delete(Database *db, const char *key) {
     // Not implemented yet
     (void)db; (void)key;
