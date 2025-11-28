@@ -34,7 +34,7 @@ Array of Cells. Each Cell:
 | 256  | Value (Null-terminated string) |
 
 Total Cell Size: 384 bytes.
-Max Cells per Page: ~10.
+Max Cells per Page: 10.
 
 ### Internal Node
 Stores Keys and Child Pointers.
