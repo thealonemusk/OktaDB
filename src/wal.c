@@ -180,23 +180,11 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
             return -1;
         }
         
-        // Write to DB
-        // We need to bypass pager cache or update it?
-        // Pager writes to disk using pager_flush, but that uses cache.
-        // Here we want to write directly to file descriptor of pager.
-        // But pager struct exposes file_descriptor.
-        
-        lseek(pager->file_descriptor, header.page_num * PAGE_SIZE, SEEK_SET);
-        ssize_t bytes_written = write(pager->file_descriptor, buffer, PAGE_SIZE);
-        if (bytes_written != PAGE_SIZE) {
+        // Write to DB using pager's direct write API
+        if (pager_write_page_direct(pager, header.page_num, buffer) != 0) {
             fprintf(stderr, "Failed to write page in checkpoint\n");
             free(buffer);
             return -1;
-        }  
-        
-        // Also update pager cache if present
-        if (header.page_num < TABLE_MAX_PAGES && pager->pages[header.page_num] != NULL) {
-            memcpy(pager->pages[header.page_num], buffer, PAGE_SIZE);
         }
     }
     
