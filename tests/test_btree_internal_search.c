@@ -261,8 +261,8 @@ void test_internal_node_search_varied_keys() {
     
     printf("  Inserting %d varied keys...\n", num_keys);
     for (int i = 0; i < num_keys; i++) {
-        char value[50];
-        sprintf(value, "value_for_%s", keys[i]);
+        char value[64];
+        snprintf(value, sizeof(value), "value_for_%s", keys[i]);
         
         Cursor* cursor = table_find(pager, 0, keys[i]);
         assert(cursor != NULL);
@@ -273,8 +273,8 @@ void test_internal_node_search_varied_keys() {
     // Verify all keys
     printf("  Verifying all varied keys...\n");
     for (int i = 0; i < num_keys; i++) {
-        char expected_value[50];
-        sprintf(expected_value, "value_for_%s", keys[i]);
+        char expected_value[64];
+        snprintf(expected_value, sizeof(expected_value), "value_for_%s", keys[i]);
         
         Cursor* cursor = table_find(pager, 0, keys[i]);
         assert(cursor != NULL);

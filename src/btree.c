@@ -261,12 +261,6 @@ void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* val
         
         if (strcmp(key, right_first_key) < 0) {
             // Insert into left child
-            // We need a new cursor for the left child
-            // Cursor tmp_cursor; // Unused
-            // tmp_cursor.pager = cursor->pager;
-            // tmp_cursor.page_num = left_child_page_num;
-            
-            // Re-find in left child
             Cursor* left_cursor = leaf_node_find(cursor->pager, left_child_page_num, key);
             leaf_node_insert(left_cursor, key, value);
             free(left_cursor);
