@@ -275,7 +275,10 @@ void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* val
     }
     
     // Non-root split not implemented yet
-    fprintf(stderr, "Non-root split not implemented yet\n");
+    // Abort to prevent silent data loss - this is a critical missing feature
+    fprintf(stderr, "Error: Non-root leaf node split is not implemented. "
+                    "Aborting to prevent data loss.\n");
+    abort();
 }
 
 void create_new_root(Pager* pager, uint32_t right_child_page_num) {
