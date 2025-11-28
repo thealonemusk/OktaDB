@@ -160,11 +160,5 @@ void pager_close(Pager* pager) {
         fprintf(stderr, "Error closing db file.\n");
     }
     
-    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-        if (pager->pages[i]) {
-            free(pager->pages[i]);
-        }
-    }
-    
     free(pager);
 }
