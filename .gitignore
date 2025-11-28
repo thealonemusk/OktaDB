@@ -4,6 +4,8 @@ build/
 *.exe
 *.db
 *.wal
+test_runner
+
 # Ignore binaries
 bin/
 
