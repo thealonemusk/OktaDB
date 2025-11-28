@@ -45,4 +45,12 @@ void pager_set_wal(Pager* pager, WAL* wal);
  */
 void pager_close(Pager* pager);
 
+/**
+ * Write page data directly to the database file at the given page number.
+ * This bypasses the WAL and writes directly to disk.
+ * Also updates the pager cache if the page is present.
+ * Returns 0 on success, -1 on failure.
+ */
+int pager_write_page_direct(Pager* pager, uint32_t page_num, void* data);
+
 #endif // PAGER_H

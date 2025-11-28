@@ -2,6 +2,7 @@
 #include "wal.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -75,13 +76,12 @@ Pager* pager_open(const char* filename) {
         pager->pages[i] = NULL;
     }
     pager->wal = NULL;
-    pager->wal = NULL;
 
     return pager;
 }
 
-    if (page_num >= TABLE_MAX_PAGES) {
-        fprintf(stderr, "Tried to fetch page number out of bounds. %d >= %d\n", page_num, TABLE_MAX_PAGES);
+void* pager_get_page(Pager* pager, uint32_t page_num) {
+    if (page_num > TABLE_MAX_PAGES) {
         fprintf(stderr, "Tried to fetch page number out of bounds. %d > %d\n", page_num, TABLE_MAX_PAGES);
         return NULL; // Or handle error appropriately
     }
@@ -163,4 +163,25 @@ void pager_close(Pager* pager) {
     }
     
     free(pager);
+}
+
+int pager_write_page_direct(Pager* pager, uint32_t page_num, void* data) {
+    off_t offset = lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+    if (offset == -1) {
+        fprintf(stderr, "Error seeking for direct write: %d\n", errno);
+        return -1;
+    }
+
+    ssize_t bytes_written = write(pager->file_descriptor, data, PAGE_SIZE);
+    if (bytes_written != PAGE_SIZE) {
+        fprintf(stderr, "Failed to write page directly\n");
+        return -1;
+    }
+
+    // Update pager cache if present
+    if (page_num < TABLE_MAX_PAGES && pager->pages[page_num] != NULL) {
+        memcpy(pager->pages[page_num], data, PAGE_SIZE);
+    }
+
+    return 0;
 }
