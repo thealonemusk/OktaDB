@@ -66,10 +66,34 @@ Pager* pager_open(const char* filename) {
     pager->num_pages = (file_length / PAGE_SIZE);
 
     if (file_length % PAGE_SIZE != 0) {
-        fprintf(stderr, "Db file is not a whole number of pages. Corrupt file.\n");
-        free(pager);
-        close(fd);
-        return NULL;
+        off_t new_length = (file_length / PAGE_SIZE) * PAGE_SIZE;
+        fprintf(stderr, "Warning: Db file is not a whole number of pages. Truncating from %lld to %lld bytes.\n",
+                (long long)file_length, (long long)new_length);
+#ifdef _WIN32
+        HANDLE hFile = (HANDLE)_get_osfhandle(fd);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            fprintf(stderr, "Failed to get file handle for truncation.\n");
+            free(pager);
+            close(fd);
+            return NULL;
+        }
+        LARGE_INTEGER li;
+        li.QuadPart = new_length;
+        if (!SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) || !SetEndOfFile(hFile)) {
+            fprintf(stderr, "Failed to truncate file on Windows.\n");
+            free(pager);
+            close(fd);
+            return NULL;
+        }
+#else
+        if (ftruncate(fd, new_length) != 0) {
+            fprintf(stderr, "Failed to truncate file: %d\n", errno);
+            free(pager);
+            close(fd);
+            return NULL;
+        }
+#endif
+        file_length = new_length;
     }
 
     for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
