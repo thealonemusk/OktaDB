@@ -166,13 +166,7 @@ int db_update(Database *db, const char *key, const char *value) {
         return STATUS_ERROR;
     }
 
-    // Validate key and value lengths to prevent buffer overflows
-    if (strlen(key) >= MAX_KEY_LEN) {
-        fprintf(stderr, "Error: Key too long (max %d chars)\n", MAX_KEY_LEN - 1);
-        return STATUS_ERROR;
-    }
-    if (strlen(value) >= MAX_VALUE_LEN) {
-        fprintf(stderr, "Error: Value too long (max %d chars)\n", MAX_VALUE_LEN - 1);
+    if (strlen(value) >= LEAF_NODE_VALUE_SIZE) {
         return STATUS_ERROR;
     }
 

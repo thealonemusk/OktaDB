@@ -59,6 +59,10 @@ void* get_page(Pager* pager, uint32_t page_num);
 // Cursor operations
 Cursor* table_start(Pager* pager, uint32_t root_page_num);
 Cursor* table_find(Pager* pager, uint32_t root_page_num, const char* key);
+/**
+ * Advances cursor to the next cell. NOTE: Only traverses within a single leaf node.
+ * Does not navigate to sibling leaf nodes. See btree.c for full documentation.
+ */
 void cursor_advance(Cursor* cursor);
 void* cursor_value(Cursor* cursor);
 

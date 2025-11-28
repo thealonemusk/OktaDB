@@ -75,12 +75,13 @@ Pager* pager_open(const char* filename) {
         pager->pages[i] = NULL;
     }
     pager->wal = NULL;
+    pager->wal = NULL;
 
     return pager;
 }
 
-void* pager_get_page(Pager* pager, uint32_t page_num) {
-    if (page_num > TABLE_MAX_PAGES) {
+    if (page_num >= TABLE_MAX_PAGES) {
+        fprintf(stderr, "Tried to fetch page number out of bounds. %d >= %d\n", page_num, TABLE_MAX_PAGES);
         fprintf(stderr, "Tried to fetch page number out of bounds. %d > %d\n", page_num, TABLE_MAX_PAGES);
         return NULL; // Or handle error appropriately
     }
