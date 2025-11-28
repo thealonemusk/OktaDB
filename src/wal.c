@@ -175,7 +175,8 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
         uint32_t checksum = calculate_checksum(buffer, PAGE_SIZE);
         if (checksum != header.checksum) {
             fprintf(stderr, "Checksum mismatch in WAL frame for page %d\n", header.page_num);
-            continue; // Skip corrupted frame? Or abort?
+            free(buffer);
+            return -1;
         }
         
         // Write to DB
