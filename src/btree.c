@@ -280,11 +280,77 @@ void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* val
         return;
     }
     
-    // Non-root split not implemented yet
-    // Abort to prevent silent data loss - this is a critical missing feature
-    fprintf(stderr, "Error: Non-root leaf node split is not implemented. "
-                    "Aborting to prevent data loss.\n");
-    abort();
+    // Non-root leaf node split implementation
+    // 1. Allocate a new leaf node.
+    uint32_t new_page_num = cursor->pager->num_pages;
+    void* new_node = pager_get_page(cursor->pager, new_page_num);
+    leaf_node_init(new_node);
+    set_node_root(new_node, false);
+    cursor->pager->num_pages += 1;
+
+    void* old_node = pager_get_page(cursor->pager, cursor->page_num);
+    uint32_t old_num_cells = *leaf_node_num_cells(old_node);
+
+    // All existing keys plus new key to be split between old_node and new_node
+    // Create a temporary array to hold all keys and values
+    uint32_t total_cells = old_num_cells + 1;
+    uint32_t split = total_cells / 2;
+
+    // Temporary arrays for keys and values
+    char temp_keys[LEAF_NODE_MAX_CELLS + 1][LEAF_NODE_KEY_SIZE];
+    char temp_values[LEAF_NODE_MAX_CELLS + 1][LEAF_NODE_VALUE_SIZE];
+
+    // Copy old keys and values into temp arrays
+    uint32_t i, j = 0;
+    bool inserted = false;
+    for (i = 0; i < old_num_cells; i++) {
+        char* cell_key = leaf_node_key(old_node, i);
+        char* cell_value = leaf_node_value(old_node, i);
+        // Insert the new key in sorted order
+        if (!inserted && strcmp(key, cell_key) < 0) {
+            strncpy(temp_keys[j], key, LEAF_NODE_KEY_SIZE - 1);
+            temp_keys[j][LEAF_NODE_KEY_SIZE - 1] = '\0';
+            strncpy(temp_values[j], value, LEAF_NODE_VALUE_SIZE - 1);
+            temp_values[j][LEAF_NODE_VALUE_SIZE - 1] = '\0';
+            j++;
+            inserted = true;
+        }
+        strncpy(temp_keys[j], cell_key, LEAF_NODE_KEY_SIZE - 1);
+        temp_keys[j][LEAF_NODE_KEY_SIZE - 1] = '\0';
+        strncpy(temp_values[j], cell_value, LEAF_NODE_VALUE_SIZE - 1);
+        temp_values[j][LEAF_NODE_VALUE_SIZE - 1] = '\0';
+        j++;
+    }
+    if (!inserted) {
+        strncpy(temp_keys[j], key, LEAF_NODE_KEY_SIZE - 1);
+        temp_keys[j][LEAF_NODE_KEY_SIZE - 1] = '\0';
+        strncpy(temp_values[j], value, LEAF_NODE_VALUE_SIZE - 1);
+        temp_values[j][LEAF_NODE_VALUE_SIZE - 1] = '\0';
+    }
+
+    // Reset old and new node cell counts
+    *leaf_node_num_cells(old_node) = 0;
+    *leaf_node_num_cells(new_node) = 0;
+
+    // Copy first half to old_node, second half to new_node
+    for (i = 0; i < split; i++) {
+        leaf_node_insert_cell(old_node, i, temp_keys[i], temp_values[i]);
+        (*leaf_node_num_cells(old_node))++;
+    }
+    for (i = split; i < total_cells; i++) {
+        leaf_node_insert_cell(new_node, i - split, temp_keys[i], temp_values[i]);
+        (*leaf_node_num_cells(new_node))++;
+    }
+
+    // Update sibling pointers if present
+    leaf_node_set_next_leaf(new_node, leaf_node_get_next_leaf(old_node));
+    leaf_node_set_next_leaf(old_node, new_page_num);
+
+    // Insert new key into parent
+    uint32_t parent_page_num = get_node_parent_page_num(old_node);
+    void* parent = pager_get_page(cursor->pager, parent_page_num);
+    char* new_key = leaf_node_key(new_node, 0);
+    internal_node_insert(cursor->pager, parent_page_num, new_page_num, new_key);
 }
 
 void create_new_root(Pager* pager, uint32_t right_child_page_num) {
