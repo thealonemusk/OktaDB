@@ -277,7 +277,7 @@ void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* val
     // Non-root split not implemented yet
     // Abort to prevent silent data loss - this is a critical missing feature
     fprintf(stderr, "Error: Non-root leaf node split is not implemented. "
-                    "Cannot insert key '%s'. Aborting to prevent data loss.\n", key);
+                    "Aborting to prevent data loss.\n");
     abort();
 }
 
