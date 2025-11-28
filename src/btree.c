@@ -272,7 +272,9 @@ void internal_node_insert(Pager* pager, uint32_t parent_page_num, uint32_t child
     uint32_t index = 0;
     while (index < num_keys) {
         char* key_at_index = internal_node_key(node, index);
+#ifdef DEBUG
         printf("DEBUG: checking index %d key_at=%p\n", index, key_at_index); fflush(stdout);
+#endif
         if (strcmp(key, key_at_index) < 0) {
             break;
         }
