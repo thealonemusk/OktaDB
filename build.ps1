@@ -99,7 +99,7 @@ function Run-Tests {
     $logFile = "$logDir/test_run_$timestamp.log"
     
     # Compile tests
-    & $CC $CFLAGS.Split() -o $testExe tests/test_main.c tests/test_utility.c tests/test_db.c src/utility.c src/db_core.c src/hashtable.c
+    & $CC $CFLAGS.Split() -o $testExe tests/test_main.c tests/test_utility.c tests/test_db.c tests/test_btree_split.c src/utility.c src/db_core.c src/pager.c src/btree.c src/wal.c
     
     if ($LASTEXITCODE -ne 0) { 
         Write-Host "Test compilation failed!" -ForegroundColor Red

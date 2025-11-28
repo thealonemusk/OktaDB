@@ -3,6 +3,9 @@ build/
 *.o
 *.exe
 *.db
+*.wal
+test_runner
+
 # Ignore binaries
 bin/
 
@@ -23,3 +26,6 @@ Thumbs.db
 
 # Ignore PowerShell history
 *.ps1.history
+
+# Ignore CodeQL artifacts
+_codeql_detected_source_root

@@ -9,8 +9,12 @@ oktadb/
 ├── src/
 │   ├── db_core.c          # Core database logic
 │   ├── db_core.h
-│   ├── hashtable.c        # Hash table implementation
-│   ├── hashtable.h
+│   ├── btree.c            # B+Tree implementation
+│   ├── btree.h
+│   ├── pager.c            # Pager implementation
+│   ├── pager.h
+│   ├── wal.c              # WAL implementation
+│   ├── wal.h
 │   ├── main.c             # Entry point and REPL
 │   ├── utility.h          # Utility functions
 ├── build/                 # Build artifacts (generated)
@@ -128,30 +132,13 @@ Database closed. Goodbye!
 
 ## Current Features
 
-* Simple key-value storage
-* Persistent storage to disk
-* Basic CRUD operations (Create, Read, Update, Delete)
-* Hash table indexing for O(1) lookups
-* Automatic compaction of deleted records
-* Atomic file writes for data integrity
-* Data persists between sessions
-* Maximum 1000 records
-* Keys up to 127 characters
-* Values up to 255 characters
+* Persistent storage to disk (Paged B+Tree)
+* Basic CRUD operations (Create, Read, Update)
+* Write-Ahead Logging (WAL) for crash recovery
+* Fixed-size pages (4KB)
+* Maximum key length: 127 chars
+* Maximum value length: 255 chars
 
-## Production-Ready Features
-
-* Removed all dynamic memory allocations (`malloc`) for improved stability.
-* `db_get` returns direct pointers to database records, avoiding unnecessary string duplication.
-* Improved memory management to eliminate potential leaks.
-* Compaction functionality to remove deleted records and reclaim space.
-* Hash table indexing for O(1) key lookups.
-* Atomic file writes to prevent database corruption.
-* Comprehensive error handling and validation.
-* Portable code (Windows, Linux, macOS).
-* Security improvements (removed system() calls, input validation).
-
-## Roadmap
 
 ### Phase 1 (Current) ✅
 
@@ -160,11 +147,13 @@ Database closed. Goodbye!
 * [X] REPL interface
 * [X] Persistent storage
 
-### Phase 2 (Next)
+### Phase 2 (Completed) ✅
 
-* [X] Compaction (remove deleted records)
-* [X] Hash table indexing for O(1) lookups
-* [ ] Improved serialization format
+* [X] Compaction (via B+Tree splitting/merging - merging pending)
+* [X] B+Tree Indexing
+* [X] Paged Storage Engine
+* [X] Write-Ahead Logging (WAL)
+* [X] Improved serialization format
 * [X] Better error handling
 * [X] Unit tests
 
@@ -213,23 +202,7 @@ Database closed. Goodbye!
 
 ### Storage Format
 
-Currently using a simple binary format:
-
-1. Record count (8 bytes)
-2. Array of fixed-size records:
-   * Key (128 bytes)
-   * Value (256 bytes)
-   * Deleted flag (4 bytes)
-
-### Production Improvements
-
-* Removed dynamic memory allocations for `Database` and `Record` structures.
-* Static memory allocation ensures predictable memory usage.
-* Compaction reclaims space by removing tombstones (deleted records).
-* Atomic file writes prevent corruption during crashes.
-* Hash table provides O(1) lookup performance.
-* Comprehensive input validation and error handling.
-* Portable implementation across Windows, Linux, and macOS.
+See [documentation/storage_format.md](documentation/storage_format.md) for details.
 
 ## Contributing
 

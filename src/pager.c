@@ -1,0 +1,220 @@
+#include "pager.h"
+#include "wal.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#ifndef open
+#define open _open
+#endif
+#ifndef close
+#define close _close
+#endif
+#ifndef lseek
+#define lseek _lseek
+#endif
+#ifndef read
+#define read _read
+#endif
+#ifndef write
+#define write _write
+#endif
+#ifndef O_RDWR
+#define O_RDWR _O_RDWR
+#endif
+#ifndef O_CREAT
+#define O_CREAT _O_CREAT
+#endif
+#ifndef S_IWUSR
+#define S_IWUSR _S_IWRITE
+#endif
+#ifndef S_IRUSR
+#define S_IRUSR _S_IREAD
+#endif
+#else
+#include <unistd.h>
+#endif
+
+Pager* pager_open(const char* filename) {
+    int fd = open(filename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
+    if (fd == -1) {
+        fprintf(stderr, "Unable to open file '%s': %d\n", filename, errno);
+        return NULL;
+    }
+
+    off_t file_length = lseek(fd, 0, SEEK_END);
+    if (file_length == -1) {
+        fprintf(stderr, "Error seeking file: %d\n", errno);
+        close(fd);
+        return NULL;
+    }
+    
+    Pager* pager = malloc(sizeof(Pager));
+    if (!pager) {
+        fprintf(stderr, "Failed to allocate memory for pager\n");
+        close(fd);
+        return NULL;
+    }
+    pager->file_descriptor = fd;
+    pager->file_length = file_length;
+    pager->num_pages = (file_length / PAGE_SIZE);
+
+    if (file_length % PAGE_SIZE != 0) {
+        off_t new_length = (file_length / PAGE_SIZE) * PAGE_SIZE;
+        fprintf(stderr, "Warning: Db file is not a whole number of pages. Truncating from %lld to %lld bytes.\n",
+                (long long)file_length, (long long)new_length);
+#ifdef _WIN32
+        HANDLE hFile = (HANDLE)_get_osfhandle(fd);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            fprintf(stderr, "Failed to get file handle for truncation.\n");
+            free(pager);
+            close(fd);
+            return NULL;
+        }
+        LARGE_INTEGER li;
+        li.QuadPart = new_length;
+        if (!SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) || !SetEndOfFile(hFile)) {
+            fprintf(stderr, "Failed to truncate file on Windows.\n");
+            free(pager);
+            close(fd);
+            return NULL;
+        }
+#else
+        if (ftruncate(fd, new_length) != 0) {
+            fprintf(stderr, "Failed to truncate file: %d\n", errno);
+            free(pager);
+            close(fd);
+            return NULL;
+        }
+#endif
+        file_length = new_length;
+    }
+
+    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
+        pager->pages[i] = NULL;
+    }
+    pager->wal = NULL;
+
+    return pager;
+}
+
+void* pager_get_page(Pager* pager, uint32_t page_num) {
+    if (page_num >= TABLE_MAX_PAGES) {
+        fprintf(stderr, "Tried to fetch page number out of bounds. %d >= %d\n", page_num, TABLE_MAX_PAGES);
+        return NULL; // Or handle error appropriately
+    }
+
+    if (pager->pages[page_num] == NULL) {
+        // Cache miss. Allocate memory and load from file.
+        void* page = calloc(1, PAGE_SIZE);
+        if (!page) {
+            fprintf(stderr, "Failed to allocate memory for page\n");
+            return NULL;
+        }
+        uint32_t num_pages = pager->file_length / PAGE_SIZE;
+
+        // We might save a partial page at the end of the file
+        if (pager->file_length % PAGE_SIZE) {
+            num_pages += 1;
+        }
+
+        if (page_num <= num_pages) {
+            lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+            ssize_t bytes_read = read(pager->file_descriptor, page, PAGE_SIZE);
+            if (bytes_read == -1) {
+                fprintf(stderr, "Error reading file: %d\n", errno);
+                free(page);
+                return NULL;
+            }
+        }
+
+        pager->pages[page_num] = page;
+        
+        if (page_num >= pager->num_pages) {
+             pager->num_pages = page_num + 1;
+        }
+    }
+
+    return pager->pages[page_num];
+}
+void pager_set_wal(Pager* pager, WAL* wal) {
+    pager->wal = wal;
+}
+
+int pager_flush(Pager* pager, uint32_t page_num) {
+    if (pager->pages[page_num] == NULL) {
+        fprintf(stderr, "Tried to flush null page %d\n", page_num);
+        return -1;
+    }
+
+    if (pager->wal) {
+        // Write to WAL
+        return wal_log_page(pager->wal, page_num, pager->pages[page_num]);
+    } else {
+        // Write directly to DB file
+        off_t offset = lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+        if (offset == -1) {
+            fprintf(stderr, "Error seeking to page %d: %d\n", page_num, errno);
+            return -1;
+        }
+
+        ssize_t bytes_written = write(pager->file_descriptor, pager->pages[page_num], PAGE_SIZE);
+        if (bytes_written == -1) {
+            fprintf(stderr, "Error writing page %d: %d\n", page_num, errno);
+            return -1;
+        }
+        return 0;
+    }
+}
+
+void pager_close(Pager* pager) {
+    int flush_errors = 0;
+    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
+        if (pager->pages[i]) {
+            if (pager_flush(pager, i) != 0) {
+                fprintf(stderr, "Warning: Failed to flush page %d during close\n", i);
+                flush_errors++;
+            }
+            free(pager->pages[i]);
+            pager->pages[i] = NULL;
+        }
+    }
+    
+    int result = close(pager->file_descriptor);
+    if (result == -1) {
+        fprintf(stderr, "Error closing db file: %d\n", errno);
+    }
+    
+    if (flush_errors > 0) {
+        fprintf(stderr, "Warning: %d page(s) failed to flush during close\n", flush_errors);
+    }
+    
+    free(pager);
+}
+
+int pager_write_page_direct(Pager* pager, uint32_t page_num, void* data) {
+    off_t offset = lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+    if (offset == -1) {
+        fprintf(stderr, "Error seeking for direct write: %d\n", errno);
+        return -1;
+    }
+
+    ssize_t bytes_written = write(pager->file_descriptor, data, PAGE_SIZE);
+    if (bytes_written != PAGE_SIZE) {
+        fprintf(stderr, "Failed to write page directly\n");
+        return -1;
+    }
+
+    // Update pager cache if present
+    if (page_num < TABLE_MAX_PAGES && pager->pages[page_num] != NULL) {
+        memcpy(pager->pages[page_num], data, PAGE_SIZE);
+    }
+
+    return 0;
+}

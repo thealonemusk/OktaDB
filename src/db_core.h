@@ -1,25 +1,19 @@
 #ifndef DB_CORE_H
 #define DB_CORE_H
-#include <stddef.h>
-#include <stdbool.h>
-#include "hashtable.h" // Include hashtable operations
-#include "utility.h" // Include constants like MAX_KEY_LEN
 
-// Internal record structure
-typedef struct {
-    char key[MAX_KEY_LEN];
-    char value[MAX_VALUE_LEN];
-    bool deleted;  // true if deleted, false if active
-} Record;
+#include "pager.h"
+#include "btree.h"
+#include "wal.h"
+#include "utility.h" // For MAX_FILENAME_LEN
 
 // Database structure
+// WARNING: This implementation uses a global static instance (db_instance in db_core.c)
+// which limits the application to a single database and is NOT thread-safe.
+// For multi-database or multi-threaded use, this design would need to be refactored.
 typedef struct Database {
-    char filename[MAX_KEY_LEN];
-    Record *records;
-    size_t count;       // Number of records (including deleted)
-    size_t capacity;    // Maximum capacity
-    bool modified;      // true if database has unsaved changes
-    size_t tombstone_count;  // Number of deleted records
+    char filename[MAX_FILENAME_LEN];
+    Pager* pager;
+    WAL* wal;
 } Database;
 
 // Function declarations
@@ -59,7 +53,9 @@ const char* db_get(Database *db, const char *key);
  * Delete a key-value pair
  * @param db Database instance
  * @param key Key to delete
- * @return STATUS_OK on success, STATUS_NOT_FOUND if key doesn't exist
+ * @return STATUS_OK on success, STATUS_NOT_FOUND if key doesn't exist,
+ *         STATUS_NOT_IMPLEMENTED (stub: B-tree delete not yet implemented)
+ * @note This function is currently a stub - B-tree deletion is not yet implemented
  */
 int db_delete(Database *db, const char *key);
 
@@ -74,11 +70,5 @@ void db_list(Database *db);
  * @param db Database instance
  */
 int db_update(Database *db, const char *key, const char *value);
-
-/**
- * Compact the database by removing deleted records
- * @param db Database instance
- */
-void db_compact(Database *db);
 
 #endif // DB_CORE_H
