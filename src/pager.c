@@ -65,7 +65,9 @@ Pager* pager_open(const char* filename) {
 
     if (file_length % PAGE_SIZE != 0) {
         fprintf(stderr, "Db file is not a whole number of pages. Corrupt file.\n");
-        // In a real DB, we might try to recover or truncate
+        free(pager);
+        close(fd);
+        return NULL;
     }
 
     for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
