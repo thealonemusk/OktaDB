@@ -23,4 +23,7 @@ Thumbs.db
 *.code-workspace
 
 # Ignore PowerShell history
-*.ps1.history_codeql_detected_source_root
+*.ps1.history
+
+# Ignore CodeQL artifacts
+_codeql_detected_source_root
