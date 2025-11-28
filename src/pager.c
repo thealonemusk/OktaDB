@@ -114,13 +114,6 @@ void* pager_get_page(Pager* pager, uint32_t page_num) {
 
     return pager->pages[page_num];
 }
-
-#include "wal.h" // Include wal.h for wal_log_page
-
-// ... (previous includes)
-
-// ... (pager_open implementation)
-
 void pager_set_wal(Pager* pager, WAL* wal) {
     pager->wal = wal;
 }

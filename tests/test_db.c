@@ -35,7 +35,7 @@ static const char *test_db_open_close() {
     mu_assert("error, db_open failed on reopen", db != NULL);
     
     clean_test_db();
-    printf("😊 test_db_open_close PASSED\n");
+    printf("[Pass]  test_db_open_close PASSED\n");
     return 0;
 }
 
@@ -53,7 +53,7 @@ static const char *test_db_insert_get() {
     mu_assert("error, get non-existent key should be NULL", db_get(db, "nonexistent") == NULL);
     
     clean_test_db();
-    printf("😊 test_db_insert_get PASSED\n");
+    printf("[Pass]  test_db_insert_get PASSED\n");
     return 0;
 }
 
@@ -71,7 +71,7 @@ static const char *test_db_update() {
     mu_assert("error, update non-existent key should fail", db_update(db, "key2", "val") == STATUS_NOT_FOUND);
     
     clean_test_db();
-    printf("😊 test_db_update PASSED\n");
+    printf("[Pass]  test_db_update PASSED\n");
     return 0;
 }
 

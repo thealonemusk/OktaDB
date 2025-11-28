@@ -63,7 +63,12 @@ WAL* wal_open(const char* db_filename) {
         fprintf(stderr, "Failed to allocate memory for WAL\n");
         return NULL;
     }
-    snprintf(wal->filename, sizeof(wal->filename), "%s.wal", db_filename);
+    int written = snprintf(wal->filename, sizeof(wal->filename), "%s.wal", db_filename);  
+    if (written < 0 || written >= (int)sizeof(wal->filename)) {  
+        fprintf(stderr, "WAL filename too long\n");  
+        free(wal);  
+        return NULL;  
+    }  
     
     wal->fd = open(wal->filename, O_RDWR | O_CREAT | O_APPEND, S_IWUSR | S_IRUSR);
     if (wal->fd == -1) {
@@ -122,8 +127,13 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
     }
     
     while (read(wal->fd, &header, sizeof(header)) == sizeof(header)) {
-        if (read(wal->fd, buffer, PAGE_SIZE) != PAGE_SIZE) {
-            fprintf(stderr, "Incomplete frame in WAL\n");
+        ssize_t bytes_read = read(wal->fd, buffer, PAGE_SIZE);  
+        if (bytes_read != PAGE_SIZE) {  
+            if (bytes_read > 0) {  
+                fprintf(stderr, "Incomplete page read in WAL\n");  
+            } else if (bytes_read < 0) {  
+                perror("Error reading page from WAL");  
+            }  
             break;
         }
         
@@ -140,7 +150,12 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
         // But pager struct exposes file_descriptor.
         
         lseek(pager->file_descriptor, header.page_num * PAGE_SIZE, SEEK_SET);
-        write(pager->file_descriptor, buffer, PAGE_SIZE);
+        ssize_t bytes_written = write(pager->file_descriptor, buffer, PAGE_SIZE);
+        if (bytes_written != PAGE_SIZE) {
+            fprintf(stderr, "Failed to write page in checkpoint\n");
+            free(buffer);
+            return -1;
+        }  
         
         // Also update pager cache if present
         if (header.page_num < TABLE_MAX_PAGES && pager->pages[header.page_num] != NULL) {
@@ -152,7 +167,11 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
     
     // Truncate WAL
     close(wal->fd);
-    wal->fd = open(wal->filename, O_RDWR | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);
+    wal->fd = open(wal->filename, O_RDWR | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);  
+    if (wal->fd == -1) {  
+        fprintf(stderr, "Failed to truncate WAL file\n");  
+        return -1;  
+    }  
     
     return 0;
 }
