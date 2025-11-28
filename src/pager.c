@@ -75,6 +75,7 @@ Pager* pager_open(const char* filename) {
         pager->pages[i] = NULL;
     }
     pager->wal = NULL;
+    pager->wal = NULL;
 
     return pager;
 }

@@ -261,6 +261,9 @@ void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* val
         
         if (strcmp(key, right_first_key) < 0) {
             // Insert into left child
+            // We need a new cursor for the left child
+            
+            // Re-find in left child
             Cursor* left_cursor = leaf_node_find(cursor->pager, left_child_page_num, key);
             leaf_node_insert(left_cursor, key, value);
             free(left_cursor);
@@ -274,12 +277,11 @@ void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* val
         return;
     }
     
-    // Non-root leaf node split - abort to prevent silent data loss
-    // This path is reached when a non-root leaf node needs to split,
-    // which requires a full implementation of internal node insertion.
-    fprintf(stderr, "Error: Non-root leaf node split not implemented.\n");
-    fprintf(stderr, "This tree has exceeded the supported depth.\n");
+    // Non-root leaf node split is not yet implemented.
+    // Abort to prevent silent data loss.
+    fprintf(stderr, "Error: Non-root leaf node split not implemented. Cannot insert key '%s'.\n", key);
     abort();
+    (void)value; // Suppress unused parameter warning
 }
 
 void create_new_root(Pager* pager, uint32_t right_child_page_num) {
@@ -313,12 +315,26 @@ void* cursor_value(Cursor* cursor) {
     return leaf_node_value(page, cursor->cell_num);
 }
 
+/**
+ * Advances the cursor to the next cell in the current leaf node.
+ * 
+ * LIMITATION: This function only handles advancing within a single leaf node.
+ * When the cursor reaches the end of the current leaf node, it sets end_of_table
+ * to true rather than navigating to the next sibling leaf node. This means that
+ * iteration using cursor_advance() will stop at the end of each leaf node, even
+ * if there are more records in sibling leaf nodes after a B-tree split.
+ * 
+ * To properly support multi-node traversal, the leaf nodes would need to maintain
+ * sibling pointers (next_leaf field), or the cursor would need to track the path
+ * through internal nodes.
+ */
 void cursor_advance(Cursor* cursor) {
     void* node = pager_get_page(cursor->pager, cursor->page_num);
     uint32_t num_cells = *leaf_node_num_cells(node);
     
     cursor->cell_num += 1;
     if (cursor->cell_num >= num_cells) {
+        // NOTE: Does not navigate to next leaf node - see function documentation
         cursor->end_of_table = true;
     }
 }

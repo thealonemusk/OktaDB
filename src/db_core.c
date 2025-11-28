@@ -69,6 +69,16 @@ int db_insert(Database *db, const char *key, const char *value) {
         return STATUS_ERROR;
     }
 
+    // Validate key and value lengths to prevent buffer overflows
+    if (strlen(key) >= MAX_KEY_LEN) {
+        fprintf(stderr, "Error: Key too long (max %d chars)\n", MAX_KEY_LEN - 1);
+        return STATUS_ERROR;
+    }
+    if (strlen(value) >= MAX_VALUE_LEN) {
+        fprintf(stderr, "Error: Value too long (max %d chars)\n", MAX_VALUE_LEN - 1);
+        return STATUS_ERROR;
+    }
+
     Cursor* cursor = table_find(db->pager, 0, key);
     if (!cursor) {
         return STATUS_ERROR;
@@ -153,6 +163,10 @@ void db_list(Database *db) {
 // Update the value of an existing key
 int db_update(Database *db, const char *key, const char *value) {
     if (!db || !key || !value) {
+        return STATUS_ERROR;
+    }
+
+    if (strlen(value) >= LEAF_NODE_VALUE_SIZE) {
         return STATUS_ERROR;
     }
 
