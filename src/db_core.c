@@ -156,6 +156,10 @@ int db_update(Database *db, const char *key, const char *value) {
         return STATUS_ERROR;
     }
 
+    if (strlen(value) >= LEAF_NODE_VALUE_SIZE) {
+        return STATUS_ERROR;
+    }
+
     Cursor* cursor = table_find(db->pager, 0, key);
     if (!cursor) {
         return STATUS_ERROR;
