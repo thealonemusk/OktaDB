@@ -67,11 +67,17 @@ uint32_t* internal_node_cell(void* node, uint32_t cell_num) {
     return (uint32_t*)(node + INTERNAL_NODE_HEADER_SIZE + cell_num * INTERNAL_NODE_CELL_SIZE);
 }
 
+/**
+ * Returns a pointer to the child at the given index in an internal node.
+ * WARNING: May return NULL if child_num > num_keys. Callers must check for NULL before dereferencing.
+ */
 uint32_t* internal_node_child(void* node, uint32_t child_num) {
     uint32_t num_keys = *internal_node_num_keys(node);
     if (child_num > num_keys) {
         fprintf(stderr, "Tried to access child_num %d > num_keys %d\n", child_num, num_keys);
-        return NULL;
+        // Defensive: abort to avoid undefined behavior if caller does not check for NULL
+        abort();
+        // return NULL;
     }
     if (child_num == num_keys) {
         return internal_node_right_child(node);
