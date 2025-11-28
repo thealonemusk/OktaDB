@@ -200,13 +200,19 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
     
     free(buffer);
     
-    // Truncate WAL
-    close(wal->fd);
-    wal->fd = open(wal->filename, O_RDWR | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);  
-    if (wal->fd == -1) {  
-        fprintf(stderr, "Failed to truncate WAL file\n");  
-        return -1;  
-    }  
+    // Truncate WAL - save old fd in case reopen fails
+    int old_fd = wal->fd;
+    int new_fd = open(wal->filename, O_RDWR | O_CREAT | O_TRUNC, S_IWUSR | S_IRUSR);
+    if (new_fd == -1) {
+        fprintf(stderr, "Failed to truncate WAL file\n");
+        // Keep old fd valid - don't close it since we couldn't get a new one.
+        // Note: WAL file content may be inconsistent after checkpoint; caller
+        // should handle this error appropriately or retry the checkpoint.
+        return -1;
+    }
+    // Successfully opened new truncated file, close the old one
+    close(old_fd);
+    wal->fd = new_fd;
     
     return 0;
 }
