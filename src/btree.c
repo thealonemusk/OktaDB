@@ -324,7 +324,9 @@ void internal_node_split_and_insert(Pager* pager, uint32_t parent_page_num, uint
 }
 
 void leaf_node_split_and_insert(Cursor* cursor, const char* key, const char* value) {
+#ifdef DEBUG
     printf("DEBUG: leaf_node_split_and_insert page=%d key=%s\n", cursor->page_num, key); fflush(stdout);
+#endif
     void* old_node = pager_get_page(cursor->pager, cursor->page_num);
     if (!old_node) {
         fprintf(stderr, "Failed to get page %d in leaf_node_split_and_insert\n", cursor->page_num);
