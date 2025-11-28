@@ -1,67 +1,70 @@
+#include "minunit.h"
+#include "../src/db_core.h"
+#include "../src/utility.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include "../src/btree.h"
-#include "../src/pager.h"
 
-void test_btree_split() {
-    printf("Testing btree split...\n");
-    
-    const char* db_file = "test_split.db";
-    remove(db_file);
-    remove("test_split.db.wal");
-    
-    Pager* pager = pager_open(db_file);
-    assert(pager != NULL);
-    
-    void* root_node = pager_get_page(pager, 0);
-    leaf_node_init(root_node);
-    set_node_root(root_node, true);
-    
-    // Insert enough keys to trigger split
-    // Max cells is around 10-13 depending on header size
-    // LEAF_NODE_SPACE_FOR_CELLS = 4096 - HEADER (approx 14) = 4082
-    // CELL_SIZE = 128 + 256 = 384
-    // MAX_CELLS = 4082 / 384 = 10
-    
-    char key[20];
-    char value[20];
-    
-    for (int i = 0; i < 15; i++) {
-        sprintf(key, "user%02d", i);
-        sprintf(value, "Value%02d", i);
-        
-        Cursor* cursor = table_find(pager, 0, key);
-        leaf_node_insert(cursor, key, value);
-        free(cursor);
+#define TEST_SPLIT_DB "test_split.db"
+
+static Database *db = NULL;
+
+static void clean_split_db() {
+    if (db) {
+        db_close(db);
+        db = NULL;
     }
-    
-    // Verify all keys are present
-    for (int i = 0; i < 15; i++) {
-        sprintf(key, "user%02d", i);
-        sprintf(value, "Value%02d", i);
-        
-        Cursor* cursor = table_find(pager, 0, key);
-        char* val = (char*)cursor_value(cursor);
-        if (strcmp(val, value) != 0) {
-            printf("Error: Key %s, Expected %s, Got %s\n", key, value, val);
-            assert(0);
-        }
-        free(cursor);
-    }
-    
-    pager_close(pager);
-    
-    // Cleanup
-    remove(db_file);
+    remove(TEST_SPLIT_DB);
     remove("test_split.db.wal");
-    
-    printf("Passed!\n");
 }
 
-int main() {
-    test_btree_split();
-    printf("All Split tests passed!\n");
+static const char *test_btree_split_logic() {
+    printf("Running test_btree_split_logic...\n");
+    clean_split_db();
+    
+    db = db_open(TEST_SPLIT_DB);
+    mu_assert("error, db_open failed", db != NULL);
+    
+    // Insert 50 records
+    // This forces multiple splits (root split, then non-root splits)
+    char key[32];
+    char value[32];
+    
+    for (int i = 0; i < 50; i++) {
+        snprintf(key, sizeof(key), "key-%02d", i);
+        snprintf(value, sizeof(value), "value-%02d", i);
+        
+        int result = db_insert(db, key, value);
+        if (result != STATUS_OK) {
+            printf("Insert failed for %s with status %d\n", key, result);
+        }
+        mu_assert("error, insert failed", result == STATUS_OK);
+    }
+    
+    // Verify
+    for (int i = 0; i < 50; i++) {
+        snprintf(key, sizeof(key), "key-%02d", i);
+        snprintf(value, sizeof(value), "value-%02d", i);
+        
+        const char* result = db_get(db, key);
+        if (!result) {
+            printf("Get failed for %s\n", key);
+        }
+        mu_assert("error, get failed", result != NULL);
+        if (strcmp(result, value) != 0) {
+            printf("Mismatch for %s: expected %s, got %s\n", key, value, result);
+        }
+        mu_assert("error, value mismatch", strcmp(result, value) == 0);
+    }
+    
+    clean_split_db();
+    printf("[Pass]  test_btree_split_logic PASSED\n");
+    return 0;
+}
+
+const char *all_btree_split_tests() {
+    printf("\n=== Running B-Tree Split Tests ===\n");
+    mu_run_test(test_btree_split_logic);
+    printf("=== B-Tree Split Tests Complete ===\n\n");
     return 0;
 }

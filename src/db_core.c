@@ -21,8 +21,8 @@ Database* db_open(const char *filename) {
     }
 
     Database *db = &db_instance;
-    strncpy(db->filename, filename, MAX_KEY_LEN - 1);
-    db->filename[MAX_KEY_LEN - 1] = '\0';
+    strncpy(db->filename, filename, MAX_FILENAME_LEN - 1);
+    db->filename[MAX_FILENAME_LEN - 1] = '\0';
 
     // Open Pager
     db->pager = pager_open(filename);
@@ -42,6 +42,12 @@ Database* db_open(const char *filename) {
     // Initialize root page if new database
     if (db->pager->num_pages == 0) {
         void* root_node = pager_get_page(db->pager, 0);
+        if (!root_node) {
+            fprintf(stderr, "Error: Failed to initialize root page\n");
+            pager_close(db->pager);
+            if (db->wal) wal_close(db->wal);
+            return NULL;
+        }
         leaf_node_init(root_node);
         set_node_root(root_node, true);
     }
@@ -84,9 +90,15 @@ int db_insert(Database *db, const char *key, const char *value) {
         return STATUS_ERROR;
     }
     
+    void* page = pager_get_page(db->pager, cursor->page_num);
+    if (!page) {
+        free(cursor);
+        return STATUS_ERROR;
+    }
+    
     // Check if key already exists
-    if (cursor->cell_num < *leaf_node_num_cells(pager_get_page(db->pager, cursor->page_num))) {
-        char* key_at_index = leaf_node_key(pager_get_page(db->pager, cursor->page_num), cursor->cell_num);
+    if (cursor->cell_num < *leaf_node_num_cells(page)) {
+        char* key_at_index = leaf_node_key(page, cursor->cell_num);
         if (strcmp(key, key_at_index) == 0) {
             free(cursor);
             return STATUS_EXISTS;
@@ -110,6 +122,11 @@ const char* db_get(Database *db, const char *key) {
     }
     
     void* page = pager_get_page(db->pager, cursor->page_num);
+    if (!page) {
+        free(cursor);
+        return NULL;
+    }
+    
     uint32_t num_cells = *leaf_node_num_cells(page);
     
     if (cursor->cell_num < num_cells) {
@@ -148,6 +165,10 @@ void db_list(Database *db) {
     
     while (!cursor->end_of_table) {
         void* page = pager_get_page(db->pager, cursor->page_num);
+        if (!page) {
+            printf("Error: Failed to read page %d\n", cursor->page_num);
+            break;
+        }
         char* key = leaf_node_key(page, cursor->cell_num);
         char* value = leaf_node_value(page, cursor->cell_num);
         printf("  %s -> %s\n", key, value);
@@ -176,6 +197,11 @@ int db_update(Database *db, const char *key, const char *value) {
     }
     
     void* page = pager_get_page(db->pager, cursor->page_num);
+    if (!page) {
+        free(cursor);
+        return STATUS_ERROR;
+    }
+    
     uint32_t num_cells = *leaf_node_num_cells(page);
     
     if (cursor->cell_num < num_cells) {

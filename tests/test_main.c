@@ -6,6 +6,7 @@ int tests_run = 0;
 // Forward declarations of test suites
 extern const char *all_utility_tests();
 extern const char *all_db_tests();
+extern const char *all_btree_split_tests();
 
 int main(int argc, char **argv) {
     (void)argc;
@@ -19,6 +20,11 @@ int main(int argc, char **argv) {
     }
     if (result_db != 0) {
         printf("DB TESTS FAILED: %s\n", result_db);
+        failed = 1;
+    }
+    const char *result_split = all_btree_split_tests();
+    if (result_split != 0) {
+        printf("BTREE SPLIT TESTS FAILED: %s\n", result_split);
         failed = 1;
     }
     if (!failed) {

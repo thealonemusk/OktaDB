@@ -42,6 +42,8 @@ typedef enum {
 #define INTERNAL_NODE_KEY_SIZE 128
 #define INTERNAL_NODE_CHILD_SIZE sizeof(uint32_t)
 #define INTERNAL_NODE_CELL_SIZE (INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE)
+#define INTERNAL_NODE_SPACE_FOR_CELLS (PAGE_SIZE - INTERNAL_NODE_HEADER_SIZE)
+#define INTERNAL_NODE_MAX_CELLS (INTERNAL_NODE_SPACE_FOR_CELLS / INTERNAL_NODE_CELL_SIZE)
 
 // Cursor for iterating
 typedef struct {
@@ -54,7 +56,6 @@ typedef struct {
 // Function Declarations
 void leaf_node_init(void* node);
 void internal_node_init(void* node);
-void* get_page(Pager* pager, uint32_t page_num);
 
 // Cursor operations
 Cursor* table_start(Pager* pager, uint32_t root_page_num);

@@ -4,11 +4,14 @@
 #include "pager.h"
 #include "btree.h"
 #include "wal.h"
-#include "utility.h" // For MAX_KEY_LEN
+#include "utility.h" // For MAX_FILENAME_LEN
 
 // Database structure
+// WARNING: This implementation uses a global static instance (db_instance in db_core.c)
+// which limits the application to a single database and is NOT thread-safe.
+// For multi-database or multi-threaded use, this design would need to be refactored.
 typedef struct Database {
-    char filename[MAX_KEY_LEN];
+    char filename[MAX_FILENAME_LEN];
     Pager* pager;
     WAL* wal;
 } Database;

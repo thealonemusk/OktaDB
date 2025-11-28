@@ -69,28 +69,31 @@ void print_help(void) {
 // Function to clear the screen in a cross-platform way
 void clear_screen(void) {
 #ifdef _WIN32
+    // Windows implementation using Console API
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     DWORD count;
     DWORD cellCount;
     COORD homeCoords = { 0, 0 };
 
+    // Early return if we can't get the console handle
     if (hConsole == INVALID_HANDLE_VALUE) return;
 
-    // Get the number of cells in the current buffer
+    // Get the number of cells (characters) in the current console buffer
     if (!GetConsoleScreenBufferInfo(hConsole, &csbi)) return;
     cellCount = csbi.dwSize.X * csbi.dwSize.Y;
 
-    // Fill the entire buffer with spaces
+    // Fill the entire buffer with spaces to clear visible content
     if (!FillConsoleOutputCharacter(hConsole, (TCHAR)' ', cellCount, homeCoords, &count)) return;
 
-    // Fill the entire buffer with the current colors and attributes
+    // Restore the original colors and attributes across the entire buffer
     if (!FillConsoleOutputAttribute(hConsole, csbi.wAttributes, cellCount, homeCoords, &count)) return;
 
-    // Move the cursor home
+    // Move the cursor back to the top-left corner (home position)
     SetConsoleCursorPosition(hConsole, homeCoords);
 #else
     // Unix/Linux/Mac - use ANSI escape codes
+    // \033[2J clears the screen, \033[H moves cursor to home
     printf("\033[2J\033[H");
     fflush(stdout);
 #endif

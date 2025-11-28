@@ -44,7 +44,7 @@
 Pager* pager_open(const char* filename) {
     int fd = open(filename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
     if (fd == -1) {
-        fprintf(stderr, "Unable to open file\n");
+        fprintf(stderr, "Unable to open file '%s': %d\n", filename, errno);
         return NULL;
     }
 
@@ -123,35 +123,40 @@ void pager_set_wal(Pager* pager, WAL* wal) {
     pager->wal = wal;
 }
 
-void pager_flush(Pager* pager, uint32_t page_num) {
+int pager_flush(Pager* pager, uint32_t page_num) {
     if (pager->pages[page_num] == NULL) {
-        fprintf(stderr, "Tried to flush null page\n");
-        return;
+        fprintf(stderr, "Tried to flush null page %d\n", page_num);
+        return -1;
     }
 
     if (pager->wal) {
         // Write to WAL
-        wal_log_page(pager->wal, page_num, pager->pages[page_num]);
+        return wal_log_page(pager->wal, page_num, pager->pages[page_num]);
     } else {
         // Write directly to DB file
         off_t offset = lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
         if (offset == -1) {
-            fprintf(stderr, "Error seeking: %d\n", errno);
-            return;
+            fprintf(stderr, "Error seeking to page %d: %d\n", page_num, errno);
+            return -1;
         }
 
         ssize_t bytes_written = write(pager->file_descriptor, pager->pages[page_num], PAGE_SIZE);
         if (bytes_written == -1) {
-            fprintf(stderr, "Error writing: %d\n", errno);
-            return;
+            fprintf(stderr, "Error writing page %d: %d\n", page_num, errno);
+            return -1;
         }
+        return 0;
     }
 }
 
 void pager_close(Pager* pager) {
+    int flush_errors = 0;
     for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
         if (pager->pages[i]) {
-            pager_flush(pager, i);
+            if (pager_flush(pager, i) != 0) {
+                fprintf(stderr, "Warning: Failed to flush page %d during close\n", i);
+                flush_errors++;
+            }
             free(pager->pages[i]);
             pager->pages[i] = NULL;
         }
@@ -159,7 +164,11 @@ void pager_close(Pager* pager) {
     
     int result = close(pager->file_descriptor);
     if (result == -1) {
-        fprintf(stderr, "Error closing db file.\n");
+        fprintf(stderr, "Error closing db file: %d\n", errno);
+    }
+    
+    if (flush_errors > 0) {
+        fprintf(stderr, "Warning: %d page(s) failed to flush during close\n", flush_errors);
     }
     
     free(pager);

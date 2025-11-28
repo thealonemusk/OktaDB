@@ -42,6 +42,7 @@
 #ifndef S_IRUSR
 #define S_IRUSR _S_IREAD
 #endif
+#define fsync _commit
 #else
 #include <unistd.h>
 #endif
@@ -58,9 +59,14 @@ struct WAL {
 };
 
 WAL* wal_open(const char* db_filename) {
+    if (!db_filename || strlen(db_filename) == 0) {
+        fprintf(stderr, "Error: Invalid database filename for WAL\n");
+        return NULL;
+    }
+
     WAL* wal = malloc(sizeof(WAL));
     if (!wal) {
-        fprintf(stderr, "Failed to allocate memory for WAL\n");
+        fprintf(stderr, "Error: Failed to allocate memory for WAL\n");
         return NULL;
     }
     int written = snprintf(wal->filename, sizeof(wal->filename), "%s.wal", db_filename);  
@@ -133,6 +139,15 @@ uint32_t calculate_checksum(void* data, size_t len) {
 }
 
 int wal_log_page(WAL* wal, uint32_t page_num, void* data) {
+    if (!wal) {
+        fprintf(stderr, "Error: WAL is NULL\n");
+        return -1;
+    }
+    if (!data) {
+        fprintf(stderr, "Error: Cannot log NULL page data\n");
+        return -1;
+    }
+
     WalFrameHeader header;
     header.page_num = page_num;
     header.checksum = calculate_checksum(data, PAGE_SIZE);
@@ -145,11 +160,19 @@ int wal_log_page(WAL* wal, uint32_t page_num, void* data) {
         return -1;
     }
     
-    // fsync(wal->fd); // Ensure durability (omitted for performance in this simple impl)
+    
+    if (fsync(wal->fd) != 0) {
+        fprintf(stderr, "Error: Failed to sync WAL: %d\n", errno);
+        return -1;
+    }
     return 0;
 }
 
 int wal_checkpoint(WAL* wal, Pager* pager) {
+    if (!wal || !pager) {
+        fprintf(stderr, "Error: NULL parameters in wal_checkpoint\n");
+        return -1;
+    }
     // Read all frames from WAL and write to DB
     // We should read from start
     lseek(wal->fd, 0, SEEK_SET);
@@ -170,7 +193,7 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
                 perror("Error reading page from WAL");  
             }  
             free(buffer);
-            break;
+            return -1; // Return error immediately, do not truncate
         }
         
         uint32_t checksum = calculate_checksum(buffer, PAGE_SIZE);

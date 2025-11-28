@@ -32,8 +32,9 @@ void* pager_get_page(Pager* pager, uint32_t page_num);
 
 /**
  * Flush a specific page to disk.
+ * @return 0 on success, -1 on error
  */
-void pager_flush(Pager* pager, uint32_t page_num);
+int pager_flush(Pager* pager, uint32_t page_num);
 
 /**
  * Set the WAL instance for the pager.
