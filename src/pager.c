@@ -118,7 +118,6 @@ void* pager_get_page(Pager* pager, uint32_t page_num) {
 }
 void pager_set_wal(Pager* pager, WAL* wal) {
     pager->wal = wal;
-}
 
 // ... (pager_get_page implementation)
 
