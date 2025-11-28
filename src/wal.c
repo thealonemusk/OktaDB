@@ -169,6 +169,7 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
             } else if (bytes_read < 0) {  
                 perror("Error reading page from WAL");  
             }  
+            free(buffer);
             break;
         }
         
