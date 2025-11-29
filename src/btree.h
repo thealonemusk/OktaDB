@@ -78,5 +78,5 @@ char* leaf_node_key(void* node, uint32_t cell_num);
 char* leaf_node_value(void* node, uint32_t cell_num);
 void set_node_root(void* node, bool is_root);
 bool is_node_root(void* node);
-
+NodeType get_node_type(void* node);
 #endif // BTREE_H
