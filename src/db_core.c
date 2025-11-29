@@ -159,6 +159,14 @@ int db_delete(Database *db, const char *key) {
         return STATUS_ERROR;
     }
     
+    // Defensive check: verify we're operating on a leaf node
+    if (get_node_type(page) != NODE_LEAF) {
+        fprintf(stderr, "Error: Expected leaf node but got internal node in db_delete\n");
+        free(cursor);
+        return STATUS_ERROR;
+    }
+    
+    
     uint32_t* num_cells = leaf_node_num_cells(page);
     
     // Check if key exists at cursor position

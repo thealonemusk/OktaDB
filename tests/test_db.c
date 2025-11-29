@@ -75,11 +75,147 @@ static const char *test_db_update() {
     return 0;
 }
 
+static const char *test_db_delete_success() {
+    printf("Running test_db_delete_success...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Insert a key and delete it
+    mu_assert("error, insert failed", db_insert(db, "key1", "value1") == STATUS_OK);
+    mu_assert("error, delete failed", db_delete(db, "key1") == STATUS_OK);
+    
+    // Verify the key is gone
+    mu_assert("error, key should not exist after deletion", db_get(db, "key1") == NULL);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_success PASSED\n");
+    return 0;
+}
+
+static const char *test_db_delete_nonexistent() {
+    printf("Running test_db_delete_nonexistent...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Try to delete a key that doesn't exist
+    mu_assert("error, delete should return NOT_FOUND", db_delete(db, "nonexistent") == STATUS_NOT_FOUND);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_nonexistent PASSED\n");
+    return 0;
+}
+
+static const char *test_db_delete_from_empty() {
+    printf("Running test_db_delete_from_empty...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Try to delete from empty database
+    mu_assert("error, delete from empty should return NOT_FOUND", db_delete(db, "key1") == STATUS_NOT_FOUND);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_from_empty PASSED\n");
+    return 0;
+}
+
+static const char *test_db_delete_first_key() {
+    printf("Running test_db_delete_first_key...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Insert multiple keys
+    db_insert(db, "aaa", "value1");
+    db_insert(db, "bbb", "value2");
+    db_insert(db, "ccc", "value3");
+    
+    // Delete the first key (alphabetically first)
+    mu_assert("error, delete first key failed", db_delete(db, "aaa") == STATUS_OK);
+    
+    // Verify the key is gone and others remain
+    mu_assert("error, first key should be deleted", db_get(db, "aaa") == NULL);
+    mu_assert("error, second key should exist", db_get(db, "bbb") != NULL);
+    mu_assert("error, third key should exist", db_get(db, "ccc") != NULL);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_first_key PASSED\n");
+    return 0;
+}
+
+static const char *test_db_delete_last_key() {
+    printf("Running test_db_delete_last_key...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Insert multiple keys
+    db_insert(db, "aaa", "value1");
+    db_insert(db, "bbb", "value2");
+    db_insert(db, "ccc", "value3");
+    
+    // Delete the last key (alphabetically last)
+    mu_assert("error, delete last key failed", db_delete(db, "ccc") == STATUS_OK);
+    
+    // Verify the key is gone and others remain
+    mu_assert("error, first key should exist", db_get(db, "aaa") != NULL);
+    mu_assert("error, second key should exist", db_get(db, "bbb") != NULL);
+    mu_assert("error, last key should be deleted", db_get(db, "ccc") == NULL);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_last_key PASSED\n");
+    return 0;
+}
+
+static const char *test_db_delete_middle_key() {
+    printf("Running test_db_delete_middle_key...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Insert multiple keys
+    db_insert(db, "aaa", "value1");
+    db_insert(db, "bbb", "value2");
+    db_insert(db, "ccc", "value3");
+    
+    // Delete the middle key
+    mu_assert("error, delete middle key failed", db_delete(db, "bbb") == STATUS_OK);
+    
+    // Verify the key is gone and others remain
+    mu_assert("error, first key should exist", db_get(db, "aaa") != NULL);
+    mu_assert("error, middle key should be deleted", db_get(db, "bbb") == NULL);
+    mu_assert("error, last key should exist", db_get(db, "ccc") != NULL);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_middle_key PASSED\n");
+    return 0;
+}
+
+static const char *test_db_delete_only_key() {
+    printf("Running test_db_delete_only_key...\n");
+    clean_test_db();
+    db = db_open(TEST_DB_FILE);
+    
+    // Insert one key and delete it
+    db_insert(db, "onlykey", "onlyvalue");
+    mu_assert("error, delete only key failed", db_delete(db, "onlykey") == STATUS_OK);
+    
+    // Verify the database is empty
+    mu_assert("error, key should be deleted", db_get(db, "onlykey") == NULL);
+    
+    clean_test_db();
+    printf("[Pass]  test_db_delete_only_key PASSED\n");
+    return 0;
+}
+
 const char *all_db_tests() {
     printf("\n=== Running Database Core Tests ===\n");
     mu_run_test(test_db_open_close);
     mu_run_test(test_db_insert_get);
     mu_run_test(test_db_update);
+    mu_run_test(test_db_delete_success);
+    mu_run_test(test_db_delete_nonexistent);
+    mu_run_test(test_db_delete_from_empty);
+    mu_run_test(test_db_delete_first_key);
+    mu_run_test(test_db_delete_last_key);
+    mu_run_test(test_db_delete_middle_key);
+    mu_run_test(test_db_delete_only_key);
     printf("=== Database Core Tests Complete ===\n\n");
     return 0;
 }

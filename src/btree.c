@@ -80,7 +80,6 @@ uint32_t* internal_node_child(void* node, uint32_t child_num) {
         fprintf(stderr, "Tried to access child_num %d > num_keys %d\n", child_num, num_keys);
         // Defensive: abort to avoid undefined behavior if caller does not check for NULL
         abort();
-        // return NULL;
     }
     if (child_num == num_keys) {
         return internal_node_right_child(node);
@@ -257,7 +256,6 @@ void internal_node_insert(Pager* pager, uint32_t parent_page_num, uint32_t child
     }
     
     uint32_t right_child_page_num = *internal_node_right_child(node);
-    // uint32_t child_max_key_index = num_keys; // Default to append
     
     // Find the index of the child that we are splitting (it's the left child of the new key)
     // We are inserting (Key, NewChild) effectively.
