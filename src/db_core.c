@@ -62,6 +62,8 @@ void db_close(Database *db) {
     if (db->wal) {
         wal_checkpoint(db->wal, db->pager);
         wal_close(db->wal);
+        // Clear the WAL pointer to prevent pager_close from trying to flush to a closed WAL
+        pager_set_wal(db->pager, NULL);
     }
 
     if (db->pager) {
