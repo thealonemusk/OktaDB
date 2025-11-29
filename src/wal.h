@@ -1,11 +1,62 @@
 #ifndef WAL_H
 #define WAL_H
 
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#ifndef open
+#define open _open
+#endif
+#ifndef close
+#define close _close
+#endif
+#ifndef lseek
+#define lseek _lseek
+#endif
+#ifndef read
+#define read _read
+#endif
+#ifndef write
+#define write _write
+#endif
+#ifndef O_RDWR
+#define O_RDWR _O_RDWR
+#endif
+#ifndef O_CREAT
+#define O_CREAT _O_CREAT
+#endif
+#ifndef O_APPEND
+#define O_APPEND _O_APPEND
+#endif
+#ifndef O_TRUNC
+#define O_TRUNC _O_TRUNC
+#endif
+#ifndef S_IWUSR
+#define S_IWUSR _S_IWRITE
+#endif
+#ifndef S_IRUSR
+#define S_IRUSR _S_IREAD
+#endif
+#define fsync _commit
+#else
+#include <unistd.h>
+#endif
 #include <stdint.h>
 #include <stdbool.h>
 #include "pager.h"
 
 typedef struct WAL WAL;
+
+// WAL Frame Header
+typedef struct {
+    uint32_t page_num;
+    uint32_t checksum; // Simple checksum for now
+} WalFrameHeader;
+
+struct WAL {
+    int fd;
+    char filename[256];
+};
 
 /**
  * Open the WAL for a given database file.

@@ -53,9 +53,8 @@ const char* db_get(Database *db, const char *key);
  * Delete a key-value pair
  * @param db Database instance
  * @param key Key to delete
- * @return STATUS_OK on success, STATUS_NOT_FOUND if key doesn't exist,
- *         STATUS_NOT_IMPLEMENTED (stub: B-tree delete not yet implemented)
- * @note This function is currently a stub - B-tree deletion is not yet implemented
+ * @return STATUS_OK on success, STATUS_NOT_FOUND if key doesn't exist, STATUS_ERROR on failure
+ * @note Deletion is performed by shifting cells left in the leaf node
  */
 int db_delete(Database *db, const char *key);
 

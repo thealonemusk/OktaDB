@@ -142,11 +142,63 @@ const char* db_get(Database *db, const char *key) {
     return NULL;
 }
 // Delete a key-value pair
-// TODO: Not yet implemented for B-tree storage
 int db_delete(Database *db, const char *key) {
-    (void)db; (void)key;
-    return STATUS_NOT_IMPLEMENTED; 
+    if (!db || !key) {
+        return STATUS_ERROR;
+    }
+
+    // Find the key in the B-tree
+    Cursor* cursor = table_find(db->pager, 0, key);
+    if (!cursor) {
+        return STATUS_ERROR;
+    }
+    
+    void* page = pager_get_page(db->pager, cursor->page_num);
+    if (!page) {
+        free(cursor);
+        return STATUS_ERROR;
+    }
+    
+    // Defensive check: verify we're operating on a leaf node
+    if (get_node_type(page) != NODE_LEAF) {
+        fprintf(stderr, "Error: Expected leaf node but got internal node in db_delete\n");
+        free(cursor);
+        return STATUS_ERROR;
+    }
+    
+    
+    uint32_t* num_cells = leaf_node_num_cells(page);
+    
+    // Check if key exists at cursor position
+    if (cursor->cell_num >= *num_cells) {
+        free(cursor);
+        return STATUS_NOT_FOUND;
+    }
+    
+    char* key_at_index = leaf_node_key(page, cursor->cell_num);
+    if (strcmp(key, key_at_index) != 0) {
+        free(cursor);
+        return STATUS_NOT_FOUND;
+    }
+    
+    // Key found, now delete it by shifting cells left
+    // Shift all cells after the deleted cell one position to the left
+    for (uint32_t i = cursor->cell_num; i < *num_cells - 1; i++) {
+        void* dest_cell = leaf_node_cell(page, i);
+        void* src_cell = leaf_node_cell(page, i + 1);
+        memcpy(dest_cell, src_cell, LEAF_NODE_CELL_SIZE);
+    }
+    
+    // Decrement the number of cells
+    (*num_cells)--;
+    
+    // Flush the modified page to disk
+    pager_flush(db->pager, cursor->page_num);
+    
+    free(cursor);
+    return STATUS_OK;
 }
+
 
 // List all keys
 void db_list(Database *db) {

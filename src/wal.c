@@ -6,58 +6,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#ifdef _WIN32
-#include <io.h>
-#include <windows.h>
-#ifndef open
-#define open _open
-#endif
-#ifndef close
-#define close _close
-#endif
-#ifndef lseek
-#define lseek _lseek
-#endif
-#ifndef read
-#define read _read
-#endif
-#ifndef write
-#define write _write
-#endif
-#ifndef O_RDWR
-#define O_RDWR _O_RDWR
-#endif
-#ifndef O_CREAT
-#define O_CREAT _O_CREAT
-#endif
-#ifndef O_APPEND
-#define O_APPEND _O_APPEND
-#endif
-#ifndef O_TRUNC
-#define O_TRUNC _O_TRUNC
-#endif
-#ifndef S_IWUSR
-#define S_IWUSR _S_IWRITE
-#endif
-#ifndef S_IRUSR
-#define S_IRUSR _S_IREAD
-#endif
-#define fsync _commit
-#else
-#include <unistd.h>
-#endif
-
-// WAL Frame Header
-typedef struct {
-    uint32_t page_num;
-    uint32_t checksum; // Simple checksum for now
-} WalFrameHeader;
-
-struct WAL {
-    int fd;
-    char filename[256];
-};
-
 WAL* wal_open(const char* db_filename) {
     if (!db_filename || strlen(db_filename) == 0) {
         fprintf(stderr, "Error: Invalid database filename for WAL\n");
@@ -212,6 +160,12 @@ int wal_checkpoint(WAL* wal, Pager* pager) {
     }
     
     free(buffer);
+    
+    // Sync database file to ensure all writes are durable
+    if (fsync(pager->file_descriptor) != 0) {
+        fprintf(stderr, "Error: Failed to sync database file during checkpoint: %d\n", errno);
+        return -1;
+    }
     
     // Truncate WAL - save old fd in case reopen fails
     int old_fd = wal->fd;

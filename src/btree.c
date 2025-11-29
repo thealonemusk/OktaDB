@@ -80,7 +80,6 @@ uint32_t* internal_node_child(void* node, uint32_t child_num) {
         fprintf(stderr, "Tried to access child_num %d > num_keys %d\n", child_num, num_keys);
         // Defensive: abort to avoid undefined behavior if caller does not check for NULL
         abort();
-        // return NULL;
     }
     if (child_num == num_keys) {
         return internal_node_right_child(node);
@@ -232,7 +231,10 @@ void leaf_node_insert(Cursor* cursor, const char* key, const char* value) {
 }
 
 void internal_node_insert(Pager* pager, uint32_t parent_page_num, uint32_t child_page_num, const char* key) {
-    printf("DEBUG: internal_node_insert parent=%d child=%d key=%s\n", parent_page_num, child_page_num, key); fflush(stdout);
+#ifdef DEBUG    
+    printf("DEBUG: internal_node_insert parent=%d child=%d key=%s\n", parent_page_num, child_page_num, key); 
+    fflush(stdout);
+#endif
     void* node = pager_get_page(pager, parent_page_num);
     if (!node) {
         fprintf(stderr, "Failed to get parent page %d in internal_node_insert\n", parent_page_num);
@@ -240,16 +242,20 @@ void internal_node_insert(Pager* pager, uint32_t parent_page_num, uint32_t child
     }
     
     uint32_t num_keys = *internal_node_num_keys(node);
-    printf("DEBUG: num_keys=%d MAX=%d\n", num_keys, INTERNAL_NODE_MAX_CELLS); fflush(stdout);
-    
+#ifdef DEBUG
+    printf("DEBUG: num_keys=%d MAX=%d\n", num_keys, INTERNAL_NODE_MAX_CELLS); 
+    fflush(stdout);
+#endif
     if (num_keys >= INTERNAL_NODE_MAX_CELLS) {
-        printf("DEBUG: Calling internal_node_split_and_insert\n"); fflush(stdout);
+#ifdef DEBUG
+        printf("DEBUG: Calling internal_node_split_and_insert\n");
+        fflush(stdout);
+#endif        
         internal_node_split_and_insert(pager, parent_page_num, child_page_num, key);
         return;
     }
     
     uint32_t right_child_page_num = *internal_node_right_child(node);
-    uint32_t child_max_key_index = num_keys; // Default to append
     
     // Find the index of the child that we are splitting (it's the left child of the new key)
     // We are inserting (Key, NewChild) effectively.
@@ -273,7 +279,8 @@ void internal_node_insert(Pager* pager, uint32_t parent_page_num, uint32_t child
     while (index < num_keys) {
         char* key_at_index = internal_node_key(node, index);
 #ifdef DEBUG
-        printf("DEBUG: checking index %d key_at=%p\n", index, key_at_index); fflush(stdout);
+        printf("DEBUG: checking index %d key_at=%p\n", index, key_at_index); 
+        fflush(stdout);
 #endif
         if (strcmp(key, key_at_index) < 0) {
             break;
