@@ -1,4 +1,3 @@
-#include "db_core.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +10,12 @@
 #include <limits.h>
 #endif
 
+#include "db_core.h"
+#include "pager.h"
+#include "btree.h"
+#include "wal.h"
+#include "utility.h" // For MAX_FILENAME_LEN, MAX_KEY_LEN, MAX_VALUE_LEN, STATUS_* constants
+
 static Database db_instance;
 
 // Open or create a database
@@ -19,7 +24,6 @@ Database* db_open(const char *filename) {
         fprintf(stderr, "Error: Filename is NULL in db_open\n");
         return NULL;
     }
-
     Database *db = &db_instance;
     strncpy(db->filename, filename, MAX_FILENAME_LEN - 1);
     db->filename[MAX_FILENAME_LEN - 1] = '\0';
@@ -34,7 +38,6 @@ Database* db_open(const char *filename) {
     db->wal = wal_open(filename);
     if (db->wal) {
         pager_set_wal(db->pager, db->wal);
-        
         // Checkpoint WAL on startup to recover any unsaved changes
         wal_checkpoint(db->wal, db->pager);
     }
@@ -51,21 +54,17 @@ Database* db_open(const char *filename) {
         leaf_node_init(root_node);
         set_node_root(root_node, true);
     }
-
     return db;
 }
 
 // Close database and save to disk
 void db_close(Database *db) {
     if (!db) return;
-
     if (db->wal) {
         wal_checkpoint(db->wal, db->pager);
         wal_close(db->wal);
-        // Clear the WAL pointer to prevent pager_close from trying to flush to a closed WAL
         pager_set_wal(db->pager, NULL);
     }
-
     if (db->pager) {
         pager_close(db->pager);
     }
@@ -73,11 +72,7 @@ void db_close(Database *db) {
 
 // Insert a new key-value pair
 int db_insert(Database *db, const char *key, const char *value) {
-    if (!db || !key || !value) {
-        return STATUS_ERROR;
-    }
-
-    // Validate key and value lengths to prevent buffer overflows
+    if (!db || !key || !value) return STATUS_ERROR;
     if (strlen(key) >= MAX_KEY_LEN) {
         fprintf(stderr, "Error: Key too long (max %d chars)\n", MAX_KEY_LEN - 1);
         return STATUS_ERROR;
@@ -86,27 +81,14 @@ int db_insert(Database *db, const char *key, const char *value) {
         fprintf(stderr, "Error: Value too long (max %d chars)\n", MAX_VALUE_LEN - 1);
         return STATUS_ERROR;
     }
-
     Cursor* cursor = table_find(db->pager, 0, key);
-    if (!cursor) {
-        return STATUS_ERROR;
-    }
-    
+    if (!cursor) return STATUS_ERROR;
     void* page = pager_get_page(db->pager, cursor->page_num);
-    if (!page) {
-        free(cursor);
-        return STATUS_ERROR;
-    }
-    
-    // Check if key already exists
+    if (!page) { free(cursor); return STATUS_ERROR; }
     if (cursor->cell_num < *leaf_node_num_cells(page)) {
-        char* key_at_index = leaf_node_key(page, cursor->cell_num);
-        if (strcmp(key, key_at_index) == 0) {
-            free(cursor);
-            return STATUS_EXISTS;
-        }
+        char* existing = leaf_node_key(page, cursor->cell_num);
+        if (strcmp(key, existing) == 0) { free(cursor); return STATUS_EXISTS; }
     }
-
     leaf_node_insert(cursor, key, value);
     free(cursor);
     return STATUS_OK;
@@ -114,166 +96,125 @@ int db_insert(Database *db, const char *key, const char *value) {
 
 // Get value by key
 const char* db_get(Database *db, const char *key) {
-    if (!db || !key) {
-        return NULL;
-    }
-
+    if (!db || !key) return NULL;
     Cursor* cursor = table_find(db->pager, 0, key);
-    if (!cursor) {
-        return NULL;
-    }
-    
+    if (!cursor) return NULL;
     void* page = pager_get_page(db->pager, cursor->page_num);
-    if (!page) {
-        free(cursor);
-        return NULL;
-    }
-    
+    if (!page) { free(cursor); return NULL; }
     uint32_t num_cells = *leaf_node_num_cells(page);
-    
     if (cursor->cell_num < num_cells) {
-        char* key_at_index = leaf_node_key(page, cursor->cell_num);
-        if (strcmp(key, key_at_index) == 0) {
-            char* value = leaf_node_value(page, cursor->cell_num);
+        char* k = leaf_node_key(page, cursor->cell_num);
+        if (strcmp(key, k) == 0) {
+            char* v = leaf_node_value(page, cursor->cell_num);
             free(cursor);
-            return value;
+            return v;
         }
     }
-    
     free(cursor);
     return NULL;
 }
+
 // Delete a key-value pair
 int db_delete(Database *db, const char *key) {
-    if (!db || !key) {
-        return STATUS_ERROR;
-    }
-
-    // Find the key in the B-tree
+    if (!db || !key) return STATUS_ERROR;
     Cursor* cursor = table_find(db->pager, 0, key);
-    if (!cursor) {
-        return STATUS_ERROR;
-    }
-    
+    if (!cursor) return STATUS_ERROR;
     void* page = pager_get_page(db->pager, cursor->page_num);
-    if (!page) {
-        free(cursor);
-        return STATUS_ERROR;
-    }
-    
-    // Defensive check: verify we're operating on a leaf node
-    if (get_node_type(page) != NODE_LEAF) {
-        fprintf(stderr, "Error: Expected leaf node but got internal node in db_delete\n");
-        free(cursor);
-        return STATUS_ERROR;
-    }
-    
-    
+    if (!page) { free(cursor); return STATUS_ERROR; }
+    if (get_node_type(page) != NODE_LEAF) { free(cursor); return STATUS_ERROR; }
     uint32_t* num_cells = leaf_node_num_cells(page);
-    
-    // Check if key exists at cursor position
-    if (cursor->cell_num >= *num_cells) {
-        free(cursor);
-        return STATUS_NOT_FOUND;
-    }
-    
-    char* key_at_index = leaf_node_key(page, cursor->cell_num);
-    if (strcmp(key, key_at_index) != 0) {
-        free(cursor);
-        return STATUS_NOT_FOUND;
-    }
-    
-    // Key found, now delete it by shifting cells left
-    // Shift all cells after the deleted cell one position to the left
+    if (cursor->cell_num >= *num_cells) { free(cursor); return STATUS_NOT_FOUND; }
+    char* existing = leaf_node_key(page, cursor->cell_num);
+    if (strcmp(key, existing) != 0) { free(cursor); return STATUS_NOT_FOUND; }
+    // Shift cells left
     for (uint32_t i = cursor->cell_num; i < *num_cells - 1; i++) {
-        void* dest_cell = leaf_node_cell(page, i);
-        void* src_cell = leaf_node_cell(page, i + 1);
-        memcpy(dest_cell, src_cell, LEAF_NODE_CELL_SIZE);
+        void* dest = leaf_node_cell(page, i);
+        void* src = leaf_node_cell(page, i + 1);
+        memcpy(dest, src, LEAF_NODE_CELL_SIZE);
     }
-    
-    // Decrement the number of cells
     (*num_cells)--;
-    
-    // Flush the modified page to disk
     pager_flush(db->pager, cursor->page_num);
-    
     free(cursor);
     return STATUS_OK;
 }
 
-
-// List all keys
-void db_list(Database *db) {
-    if (!db) return;
-    
-    printf("Keys in database:\n");
-    printf("----------------------------------------\n");
-    
-    Cursor* cursor = table_start(db->pager, 0);
-    if (!cursor) {
-        printf("Error: Failed to create cursor\n");
-        return;
-    }
-    
-    int count = 0;
-    
-    while (!cursor->end_of_table) {
-        void* page = pager_get_page(db->pager, cursor->page_num);
-        if (!page) {
-            printf("Error: Failed to read page %d\n", cursor->page_num);
-            break;
-        }
-        char* key = leaf_node_key(page, cursor->cell_num);
-        char* value = leaf_node_value(page, cursor->cell_num);
-        printf("  %s -> %s\n", key, value);
-        count++;
-        cursor_advance(cursor);
-    }
-    
-    printf("----------------------------------------\n");
-    printf("Total: %d active record(s)\n", count);
-    free(cursor);
-}
-
-// Update the value of an existing key
+// Update a key's value
 int db_update(Database *db, const char *key, const char *value) {
-    if (!db || !key || !value) {
-        return STATUS_ERROR;
-    }
-
-    if (strlen(value) >= LEAF_NODE_VALUE_SIZE) {
-        return STATUS_ERROR;
-    }
-
+    if (!db || !key || !value) return STATUS_ERROR;
+    if (strlen(value) >= LEAF_NODE_VALUE_SIZE) return STATUS_ERROR;
     Cursor* cursor = table_find(db->pager, 0, key);
-    if (!cursor) {
-        return STATUS_ERROR;
-    }
-    
+    if (!cursor) return STATUS_ERROR;
     void* page = pager_get_page(db->pager, cursor->page_num);
-    if (!page) {
-        free(cursor);
-        return STATUS_ERROR;
-    }
-    
+    if (!page) { free(cursor); return STATUS_ERROR; }
     uint32_t num_cells = *leaf_node_num_cells(page);
-    
     if (cursor->cell_num < num_cells) {
-        char* key_at_index = leaf_node_key(page, cursor->cell_num);
-        if (strcmp(key, key_at_index) == 0) {
-            // Found, update value
-            // Note: This is a simplified update that assumes value length fits.
-            // In our fixed-size cell design, it always fits (256 bytes).
-            char* value_at = leaf_node_value(page, cursor->cell_num);
-            strncpy(value_at, value, LEAF_NODE_VALUE_SIZE - 1);
-            value_at[LEAF_NODE_VALUE_SIZE - 1] = '\0';
-            
+        char* existing = leaf_node_key(page, cursor->cell_num);
+        if (strcmp(key, existing) == 0) {
+            char* val_ptr = leaf_node_value(page, cursor->cell_num);
+            strncpy(val_ptr, value, LEAF_NODE_VALUE_SIZE - 1);
+            val_ptr[LEAF_NODE_VALUE_SIZE - 1] = '\0';
             pager_flush(db->pager, cursor->page_num);
             free(cursor);
             return STATUS_OK;
         }
     }
-    
     free(cursor);
     return STATUS_NOT_FOUND;
+}
+
+// Callback type for iteration
+typedef void (*db_iter_cb)(const char *key, const char *value, void *ctx);
+
+// Iterate over all records
+int db_select_all(Database *db, db_iter_cb callback, void *ctx) {
+    if (!db || !callback) return STATUS_ERROR;
+    Cursor* cursor = table_start(db->pager, 0);
+    if (!cursor) return STATUS_ERROR;
+    while (!cursor->end_of_table) {
+        void* page = pager_get_page(db->pager, cursor->page_num);
+        if (!page) { free(cursor); return STATUS_ERROR; }
+        char* key = leaf_node_key(page, cursor->cell_num);
+        char* value = leaf_node_value(page, cursor->cell_num);
+        callback(key, value, ctx);
+        cursor_advance(cursor);
+    }
+    free(cursor);
+    return STATUS_OK;
+}
+
+// Find a record by key and invoke callback
+int db_select_where(Database *db, const char *key, db_iter_cb callback, void *ctx) {
+    if (!db || !key || !callback) return STATUS_ERROR;
+    Cursor* cursor = table_find(db->pager, 0, key);
+    if (!cursor) return STATUS_ERROR;
+    void* page = pager_get_page(db->pager, cursor->page_num);
+    if (!page) { free(cursor); return STATUS_ERROR; }
+    uint32_t num_cells = *leaf_node_num_cells(page);
+    if (cursor->cell_num < num_cells) {
+        char* k = leaf_node_key(page, cursor->cell_num);
+        if (strcmp(key, k) == 0) {
+            char* v = leaf_node_value(page, cursor->cell_num);
+            callback(k, v, ctx);
+            free(cursor);
+            return STATUS_OK;
+        }
+    }
+    free(cursor);
+    return STATUS_NOT_FOUND;
+}
+
+// Helper printing callback for SELECT *
+static void print_row_cb(const char *key, const char *value, void *ctx) {
+    (void)ctx;
+    printf("| %-20s | %-38s |\n", key, value);
+}
+
+// List all keys (SQL‑like table output)
+void db_list(Database *db) {
+    if (!db) return;
+    printf("+----------------------+----------------------------------------+\n");
+    printf("| %-20s | %-38s |\n", "Key", "Value");
+    printf("+----------------------+----------------------------------------+\n");
+    db_select_all(db, print_row_cb, NULL);
+    printf("+----------------------+----------------------------------------+\n");
 }

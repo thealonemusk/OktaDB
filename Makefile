@@ -53,7 +53,7 @@ run: $(TARGET)
 	./$(TARGET) test.db
 
 test:
-	$(CC) $(CFLAGS) -o test_runner tests/test_main.c tests/test_utility.c src/utility.c -I src
+	$(CC) $(CFLAGS) -o test_runner tests/test_main.c tests/test_utility.c tests/test_select.c src/*.c -I src
 	./test_runner
 
 install: release
