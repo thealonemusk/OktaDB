@@ -1,8 +1,22 @@
 # OktaDB
 
-A simple key-value database implementation in C for learning database internals.
+An embedded, persistent key-value storage engine written from scratch in C, with no external dependencies.
 
-* [ ] Project Structure
+Records are stored in a custom paged binary format on disk. A B+Tree provides O(log n) point
+lookups with node splitting and internal-node search, a pager manages 4KB page I/O against the
+file, and a write-ahead log makes writes crash-recoverable. Space freed by deletes is reclaimed
+through compaction.
+
+| | |
+|---|---|
+| **Storage format** | Custom binary format, 4KB fixed-size pages, leaf/internal node layout &mdash; [storage_format.md](documentation/storage_format.md) |
+| **Indexing** | B+Tree with node splitting and internal-node search, O(log n) lookups |
+| **Durability** | Write-ahead logging for crash recovery |
+| **Space reclamation** | Page compaction &mdash; [compaction.md](documentation/compaction.md) |
+| **Interface** | REPL supporting `INSERT` / `GET` / `UPDATE` / `DELETE` / `LIST` |
+| **Tests** | Unit suite over the B+Tree (incl. splits and internal search), pager, WAL and core &mdash; [testing.md](documentation/testing.md) |
+
+## Project Structure
 
 ```
 oktadb/
